@@ -12,6 +12,17 @@ declare namespace _ZoteroTypes {
       "model": string;
       "temperature": number;
       "maxChars": number;
+      "openaiApiBase": string;
+      "geminiApiBase": string;
+      "provider": string;
+      "enableThoughts": boolean;
+      "thinkingBudget": number;
+      "summarizeMode": string;
+      "concurrency": number;
+      "attachmentFilterGlob": string;
+      "maxInlineMB": number;
+      "maxFileMB": number;
+      "saveThoughtsToNote": boolean;
       "prompt": string;
     };
   }

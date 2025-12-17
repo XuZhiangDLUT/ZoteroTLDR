@@ -1,8 +1,22 @@
 pref("apiBase", "https://api.openai.com/v1");
 pref("apiKey", "");
-pref("model", "gpt-4o-mini");
+pref("model", "gemini-2.5-pro");
 pref("temperature", 0.2);
 pref("maxChars", 800000);
+
+// OpenAI-compatible & Gemini v1beta integration
+pref("openaiApiBase", "https://x666.me/v1");
+pref("geminiApiBase", "https://x666.me");
+pref("provider", "openai-compatible");
+pref("enableThoughts", true);
+pref("thinkingBudget", -1); // -1=动态思考；0=关闭；>0=token数
+pref("summarizeMode", "text-index"); // or pdf-native
+pref("concurrency", 2);
+pref("attachmentFilterGlob", "*-dual.pdf");
+pref("maxInlineMB", 20);
+pref("maxFileMB", 50);
+pref("saveThoughtsToNote", true);
+
 pref(
   "prompt",
   `# 指令：一分钟掌握论文精髓 (深度解析 + 可视化对比)
