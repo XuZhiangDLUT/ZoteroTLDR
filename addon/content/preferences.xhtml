@@ -120,6 +120,39 @@
     ></html:input>
   </hbox>
 
+  <!-- Rate Limit -->
+  <hbox>
+    <html:label
+      for="zotero-prefpane-__addonRef__-rateLimitCount"
+      data-l10n-id="pref-rate-limit-count"
+    ></html:label>
+    <html:input
+      type="number"
+      min="1"
+      max="100"
+      id="zotero-prefpane-__addonRef__-rateLimitCount"
+      preference="rateLimitCount"
+      style="width: 80px"
+    ></html:input>
+    <html:label
+      for="zotero-prefpane-__addonRef__-rateLimitWindowMinutes"
+      data-l10n-id="pref-rate-limit-window"
+      style="margin-left: 20px"
+    ></html:label>
+    <html:input
+      type="number"
+      min="1"
+      max="60"
+      id="zotero-prefpane-__addonRef__-rateLimitWindowMinutes"
+      preference="rateLimitWindowMinutes"
+      style="width: 80px"
+    ></html:input>
+    <html:label
+      data-l10n-id="pref-rate-limit-help"
+      style="margin-left: 10px; color: #666"
+    ></html:label>
+  </hbox>
+
   <!-- Attachment Filter -->
   <hbox>
     <html:label

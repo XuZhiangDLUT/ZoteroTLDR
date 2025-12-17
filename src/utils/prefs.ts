@@ -33,6 +33,8 @@ export interface AddonPrefs {
   concurrency: number;
   maxChars: number;
   attachmentFilter: string;
+  rateLimitCount: number;
+  rateLimitWindowMinutes: number;
   prompt: string;
 }
 
@@ -61,12 +63,18 @@ export function getPrefs(): AddonPrefs {
       : Number(thinkingBudgetPref ?? -1) || -1;
 
   const concurrencyPref = getPref("concurrency" as any);
-  const concurrency = Math.max(1, Math.min(10, Number(concurrencyPref ?? 2) || 2));
+  const concurrency = Math.max(1, Math.min(10, Number(concurrencyPref ?? 1) || 1));
 
   const maxCharsPref = getPref("maxChars" as any);
   const maxChars = Number(maxCharsPref ?? 800000) || 800000;
 
   const attachmentFilter = ((getPref("attachmentFilter" as any) as string) || "").trim();
+
+  const rateLimitCountPref = getPref("rateLimitCount" as any);
+  const rateLimitCount = Math.max(1, Number(rateLimitCountPref ?? 20) || 20);
+
+  const rateLimitWindowMinutesPref = getPref("rateLimitWindowMinutes" as any);
+  const rateLimitWindowMinutes = Math.max(1, Number(rateLimitWindowMinutesPref ?? 5) || 5);
 
   const prompt = (getPref("prompt" as any) as string) || "";
 
@@ -79,6 +87,8 @@ export function getPrefs(): AddonPrefs {
     concurrency,
     maxChars,
     attachmentFilter,
+    rateLimitCount,
+    rateLimitWindowMinutes,
     prompt,
   };
 }

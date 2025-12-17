@@ -9,9 +9,13 @@ pref("enableThoughts", true);
 pref("thinkingBudget", -1); // -1=动态思考；0=关闭；>0=token数
 
 // 处理参数
-pref("concurrency", 2);
+pref("concurrency", 1);
 pref("maxChars", 800000);
 pref("attachmentFilter", "!*-mono.pdf, !*-dual.pdf"); // 排除 -mono.pdf 和 -dual.pdf
+
+// 速率限制
+pref("rateLimitCount", 20); // 时间窗口内最大请求数
+pref("rateLimitWindowMinutes", 5); // 时间窗口（分钟）
 
 // 提示词模板
 pref(

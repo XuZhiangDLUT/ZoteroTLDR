@@ -3,6 +3,48 @@ import { getPrefs, type AddonPrefs } from "../utils/prefs";
 import { summarize, testAPI, type SummarizeResult } from "../llm/providers";
 
 /**
+ * 速率限制器 - 滑动窗口实现
+ */
+class RateLimiter {
+  private timestamps: number[] = [];
+
+  /**
+   * 等待直到可以执行下一个请求
+   * @param maxRequests 时间窗口内最大请求数
+   * @param windowMs 时间窗口（毫秒）
+   */
+  async waitForSlot(maxRequests: number, windowMs: number): Promise<void> {
+    const now = Date.now();
+    // 清理过期的时间戳
+    this.timestamps = this.timestamps.filter(t => now - t < windowMs);
+
+    if (this.timestamps.length >= maxRequests) {
+      // 计算需要等待的时间
+      const oldestTimestamp = this.timestamps[0];
+      const waitTime = oldestTimestamp + windowMs - now + 100; // 额外100ms缓冲
+      if (waitTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        // 递归检查，确保可以执行
+        return this.waitForSlot(maxRequests, windowMs);
+      }
+    }
+
+    // 记录当前请求时间
+    this.timestamps.push(Date.now());
+  }
+
+  /**
+   * 重置限制器
+   */
+  reset(): void {
+    this.timestamps = [];
+  }
+}
+
+// 全局速率限制器实例
+const rateLimiter = new RateLimiter();
+
+/**
  * 将 Markdown 转换为 HTML
  */
 function markdownToHTML(md: string): string {
@@ -227,6 +269,10 @@ async function summarizeSinglePdf(
     content: attachment.text,
     fileName: attachment.fileName,
   });
+
+  // 应用速率限制
+  const windowMs = prefs.rateLimitWindowMinutes * 60 * 1000;
+  await rateLimiter.waitForSlot(prefs.rateLimitCount, windowMs);
 
   const result: SummarizeResult = await summarize({
     title,

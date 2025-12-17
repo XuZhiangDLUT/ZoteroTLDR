@@ -42,8 +42,10 @@ A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your 
 | Temperature | Creativity (0-2) | `0.2` |
 | Enable Thinking | Use Gemini thinking mode | `true` |
 | Thinking Budget | Token limit (-1=dynamic) | `-1` |
-| Concurrency | Parallel processing count | `2` |
+| Concurrency | Parallel processing count | `1` |
 | Max Characters | Max text to extract per PDF | `800000` |
+| Rate Limit | Max requests per time window | `20` |
+| Rate Limit Window | Time window in minutes | `5` |
 | PDF Filter | Filename filter patterns | `!*-mono.pdf, !*-dual.pdf` |
 | Prompt Template | Customizable prompt | (detailed template) |
 

@@ -16,6 +16,8 @@ declare namespace _ZoteroTypes {
       "concurrency": number;
       "maxChars": number;
       "attachmentFilter": string;
+      "rateLimitCount": number;
+      "rateLimitWindowMinutes": number;
       "prompt": string;
     };
   }
