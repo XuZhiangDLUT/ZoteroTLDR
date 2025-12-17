@@ -33,6 +33,7 @@ export interface AddonPrefs {
   apiBase: string;
   model: string;
   temperature: number;
+  maxOutputTokens: number;
   enableThoughts: boolean;
   thinkingBudget: number;
   concurrency: number;
@@ -58,7 +59,15 @@ export function getPrefs(): AddonPrefs {
 
   const temperaturePref = getPref("temperature" as any);
   const temperature =
-    typeof temperaturePref === "number" ? temperaturePref : 0.2;
+    typeof temperaturePref === "number"
+      ? temperaturePref
+      : parseFloat(String(temperaturePref ?? "0.2")) || 0.2;
+
+  const maxOutputTokensPref = getPref("maxOutputTokens" as any);
+  const maxOutputTokens =
+    typeof maxOutputTokensPref === "number"
+      ? maxOutputTokensPref
+      : parseInt(String(maxOutputTokensPref ?? "32768"), 10) || 32768;
 
   const enableThoughts = Boolean(getPref("enableThoughts" as any) ?? true);
 
@@ -91,6 +100,7 @@ export function getPrefs(): AddonPrefs {
     apiBase,
     model,
     temperature,
+    maxOutputTokens,
     enableThoughts,
     thinkingBudget,
     concurrency,

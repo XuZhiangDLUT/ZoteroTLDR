@@ -10,12 +10,13 @@ declare namespace _ZoteroTypes {
       "apiBase": string;
       "apiKey": string;
       "model": string;
-      "temperature": number;
+      "temperature": string;
+      "maxOutputTokens": string;
       "pdfParseMode": string;
       "enableThoughts": boolean;
       "thinkingBudget": number;
       "concurrency": number;
-      "maxChars": number;
+      "maxChars": string;
       "attachmentFilter": string;
       "rateLimitCount": number;
       "rateLimitWindowMinutes": number;
