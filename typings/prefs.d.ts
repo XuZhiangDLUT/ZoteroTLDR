@@ -11,6 +11,7 @@ declare namespace _ZoteroTypes {
       "apiKey": string;
       "model": string;
       "temperature": number;
+      "pdfParseMode": string;
       "enableThoughts": boolean;
       "thinkingBudget": number;
       "concurrency": number;

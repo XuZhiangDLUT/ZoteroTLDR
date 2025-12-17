@@ -28,6 +28,15 @@
     </hbox>
 
     <hbox align="center">
+      <label value="PDF Parse Mode:" style="width: 120px"/>
+      <html:select id="zotero-prefpane-__addonRef__-pdfParseMode"
+        preference="extensions.zotero.__addonRef__.pdfParseMode" style="width: 180px">
+        <html:option value="remote">Remote (upload PDF)</html:option>
+        <html:option value="local">Local (extract text)</html:option>
+      </html:select>
+    </hbox>
+
+    <hbox align="center">
       <label value="Enable Thoughts:" style="width: 120px"/>
       <checkbox id="zotero-prefpane-__addonRef__-enableThoughts"
         preference="extensions.zotero.__addonRef__.enableThoughts"/>

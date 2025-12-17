@@ -1,6 +1,6 @@
 import { marked } from "marked";
 import { getPrefs, type AddonPrefs } from "../utils/prefs";
-import { summarize, testAPI, type SummarizeResult } from "../llm/providers";
+import { summarize, summarizeWithRemotePdf, testAPI, type SummarizeResult } from "../llm/providers";
 
 /**
  * 速率限制器 - 滑动窗口实现
@@ -149,11 +149,12 @@ function shouldProcessFile(fileName: string, filterRule: string): boolean {
 interface AttachmentInfo {
   item: Zotero.Item;
   fileName: string;
-  text: string;
+  filePath: string; // PDF 文件完整路径（用于远端解析）
+  text: string; // 本地提取的文本（用于本地解析）
 }
 
 /**
- * 获取条目的所有符合条件的 PDF 附件及其文本
+ * 获取条目的所有符合条件的 PDF 附件及其信息
  */
 async function getEligibleAttachments(
   item: Zotero.Item,
@@ -174,33 +175,43 @@ async function getEligibleAttachments(
       continue;
     }
 
-    // 获取文件名
+    // 获取文件路径和文件名
     const getFilePath = (att as any).getFilePath || att.getFilePath;
-    const path = getFilePath ? getFilePath.call(att) : "";
-    const fileName = path ? path.split(/[\\/]/).pop() ?? "" : "";
+    const filePath = getFilePath ? getFilePath.call(att) : "";
+    const fileName = filePath ? filePath.split(/[\\/]/).pop() ?? "" : "";
 
     // 检查是否符合过滤规则
     if (!shouldProcessFile(fileName, prefs.attachmentFilter)) {
       continue;
     }
 
-    // 提取文本
-    try {
-      const txt = await (att as any).attachmentText;
-      if (txt) {
-        const text = String(txt);
-        const truncated = text.length > prefs.maxChars
-          ? text.slice(0, prefs.maxChars)
-          : text;
-        results.push({
-          item: att,
-          fileName,
-          text: truncated,
-        });
+    // 根据解析模式决定是否需要提取本地文本
+    let text = "";
+    if (prefs.pdfParseMode === "local") {
+      try {
+        const txt = await (att as any).attachmentText;
+        if (txt) {
+          const fullText = String(txt);
+          text = fullText.length > prefs.maxChars
+            ? fullText.slice(0, prefs.maxChars)
+            : fullText;
+        }
+      } catch (_e) {
+        // 本地解析模式下，无法获取文本则跳过
+        continue;
       }
-    } catch (_e) {
-      // 忽略单个附件读取失败
+      // 本地模式下，没有文本则跳过
+      if (!text) {
+        continue;
+      }
     }
+
+    results.push({
+      item: att,
+      fileName,
+      filePath,
+      text,
+    });
   }
 
   return results;
@@ -226,6 +237,42 @@ const DEFAULT_PROMPT_TEMPLATE =
   "- 摘要：{abstract}\n" +
   "- 正文片段（可能被截断）：\n{content}\n\n" +
   "请用要点列出：研究问题、方法、数据/实验、主要结论、贡献与局限。";
+
+const DEFAULT_REMOTE_PROMPT_TEMPLATE =
+  "请仔细阅读这个 PDF 文档，输出结构化中文摘要。\n" +
+  "论文题目：{title}\n" +
+  "摘要：{abstract}\n\n" +
+  "请用要点列出：研究问题、方法、数据/实验、主要结论、贡献与局限。\n" +
+  "如果文档中包含图表，请简要描述关键图表的内容。";
+
+/**
+ * 读取文件并转换为 base64
+ */
+async function readFileAsBase64(filePath: string): Promise<string> {
+  // 使用 Zotero 的文件 API 读取文件
+  const file = Zotero.File.pathToFile(filePath);
+  if (!file.exists()) {
+    throw new Error(`文件不存在: ${filePath}`);
+  }
+
+  // 读取文件为 ArrayBuffer
+  const data = await Zotero.File.getBinaryContentsAsync(filePath);
+
+  // 转换为 base64
+  // 在 Zotero 环境中，data 是字符串形式的二进制数据
+  const bytes = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    bytes[i] = data.charCodeAt(i);
+  }
+
+  // 使用 btoa 将二进制数据转换为 base64
+  let binary = "";
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 /**
  * 保存摘要结果为子笔记
@@ -262,25 +309,50 @@ async function summarizeSinglePdf(
   const title = item.getDisplayTitle();
   const abstract = (item.getField("abstractNote") as string) || "";
 
-  const template = prefs.prompt?.trim() || DEFAULT_PROMPT_TEMPLATE;
-  const prompt = buildPrompt(template, {
-    title,
-    abstract,
-    content: attachment.text,
-    fileName: attachment.fileName,
-  });
-
   // 应用速率限制
   const windowMs = prefs.rateLimitWindowMinutes * 60 * 1000;
   await rateLimiter.waitForSlot(prefs.rateLimitCount, windowMs);
 
-  const result: SummarizeResult = await summarize({
-    title,
-    abstract,
-    content: attachment.text,
-    prompt,
-    prefs,
-  });
+  let result: SummarizeResult;
+
+  if (prefs.pdfParseMode === "remote") {
+    // 远端解析模式：直接上传 PDF 文件
+    const pdfBase64 = await readFileAsBase64(attachment.filePath);
+
+    // 使用远端解析专用的提示词模板（如果用户没有自定义）
+    const template = prefs.prompt?.trim() || DEFAULT_REMOTE_PROMPT_TEMPLATE;
+    const prompt = buildPrompt(template, {
+      title,
+      abstract,
+      content: "", // 远端模式下不使用本地文本
+      fileName: attachment.fileName,
+    });
+
+    result = await summarizeWithRemotePdf({
+      title,
+      abstract,
+      pdfBase64,
+      prompt,
+      prefs,
+    });
+  } else {
+    // 本地解析模式：使用本地提取的文本
+    const template = prefs.prompt?.trim() || DEFAULT_PROMPT_TEMPLATE;
+    const prompt = buildPrompt(template, {
+      title,
+      abstract,
+      content: attachment.text,
+      fileName: attachment.fileName,
+    });
+
+    result = await summarize({
+      title,
+      abstract,
+      content: attachment.text,
+      prompt,
+      prefs,
+    });
+  }
 
   await saveChildNote(item, result.markdown, attachment.fileName, prefs);
 }
@@ -340,46 +412,94 @@ export class AISummaryModule {
     const pane = ztoolkit.getGlobal("ZoteroPane");
     const selectedItems = pane.getSelectedItems() as Zotero.Item[];
 
-    // 收集要处理的条目（去重）
-    const itemsMap = new Map<number, Zotero.Item>();
+    // 收集要处理的任务
+    const tasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
+    // 记录直接选中的 PDF 附件 ID
+    const selectedAttachmentIds = new Set<number>();
+    // 记录选中的常规条目
+    const selectedRegularItems: Zotero.Item[] = [];
 
+    // 第一遍：分类选中的项目
     for (const item of selectedItems) {
       if (item.isRegularItem()) {
-        itemsMap.set(item.id, item);
+        selectedRegularItems.push(item);
       } else if (item.isAttachment()) {
-        const parentID = item.parentItemID;
-        if (parentID) {
-          const parent = Zotero.Items.get(parentID) as Zotero.Item;
-          if (parent && parent.isRegularItem()) {
-            itemsMap.set(parent.id, parent);
+        selectedAttachmentIds.add(item.id);
+      }
+    }
+
+    // 处理直接选中的 PDF 附件
+    for (const item of selectedItems) {
+      if (item.isAttachment() && selectedAttachmentIds.has(item.id)) {
+        const contentType =
+          (item.getField?.("contentType") as string) ||
+          ((item as any).attachmentContentType as string | undefined) ||
+          "";
+
+        if (!contentType.includes("application/pdf")) {
+          continue;
+        }
+
+        const getFilePath = (item as any).getFilePath || item.getFilePath;
+        const filePath = getFilePath ? getFilePath.call(item) : "";
+        const fileName = filePath ? filePath.split(/[/\\]/).pop() ?? "" : "";
+
+        if (!shouldProcessFile(fileName, prefs.attachmentFilter)) {
+          continue;
+        }
+
+        // 根据解析模式决定是否需要获取文本
+        let text = "";
+        if (prefs.pdfParseMode === "local") {
+          try {
+            const txt = await (item as any).attachmentText;
+            if (txt) {
+              const fullText = String(txt);
+              text = fullText.length > prefs.maxChars
+                ? fullText.slice(0, prefs.maxChars)
+                : fullText;
+            }
+          } catch (e) {
+            // 本地模式下无法获取文本则跳过
+            continue;
           }
+          if (!text) {
+            continue;
+          }
+        }
+
+        const parentID = item.parentItemID;
+        const parent = parentID
+          ? (Zotero.Items.get(parentID) as Zotero.Item)
+          : item;
+
+        tasks.push({
+          item: parent,
+          attachment: { item, fileName, filePath, text },
+        });
+      }
+    }
+
+    // 处理选中的常规条目（获取其所有 PDF）
+    for (const item of selectedRegularItems) {
+      const attachments = await getEligibleAttachments(item, prefs);
+      for (const att of attachments) {
+        // 避免重复：如果这个 PDF 已经被直接选中处理过，跳过
+        if (!selectedAttachmentIds.has(att.item.id)) {
+          tasks.push({ item, attachment: att });
         }
       }
     }
 
-    const items = Array.from(itemsMap.values());
-
-    if (!items.length) {
-      ztoolkit.getGlobal("alert")("请先选择至少一个条目或其 PDF 附件。");
-      return;
-    }
-
-    // 收集所有要处理的 PDF（每个 PDF 单独处理）
-    const tasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
-
-    for (const item of items) {
-      const attachments = await getEligibleAttachments(item, prefs);
-      for (const att of attachments) {
-        tasks.push({ item, attachment: att });
-      }
-    }
-
     if (!tasks.length) {
+      const modeHint = prefs.pdfParseMode === "local"
+        ? "2. PDF 已被 Zotero 索引（有全文内容）\n"
+        : "2. PDF 文件存在于本地\n";
       ztoolkit.getGlobal("alert")(
         "未找到符合条件的 PDF 附件。\n" +
         "请确保：\n" +
         "1. 条目有 PDF 附件\n" +
-        "2. PDF 已被 Zotero 索引（有全文内容）\n" +
+        modeHint +
         "3. 文件名符合过滤规则",
       );
       return;

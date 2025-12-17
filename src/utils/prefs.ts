@@ -22,6 +22,11 @@ export function setPref<K extends keyof PluginPrefsMap>(
 }
 
 /**
+ * PDF 解析模式
+ */
+export type PdfParseMode = "remote" | "local";
+
+/**
  * 插件配置接口
  */
 export interface AddonPrefs {
@@ -36,6 +41,7 @@ export interface AddonPrefs {
   rateLimitCount: number;
   rateLimitWindowMinutes: number;
   prompt: string;
+  pdfParseMode: PdfParseMode;
 }
 
 /**
@@ -78,6 +84,9 @@ export function getPrefs(): AddonPrefs {
 
   const prompt = (getPref("prompt" as any) as string) || "";
 
+  const pdfParseModeRaw = (getPref("pdfParseMode" as any) as string) || "remote";
+  const pdfParseMode: PdfParseMode = pdfParseModeRaw === "local" ? "local" : "remote";
+
   return {
     apiBase,
     model,
@@ -90,5 +99,6 @@ export function getPrefs(): AddonPrefs {
     rateLimitCount,
     rateLimitWindowMinutes,
     prompt,
+    pdfParseMode,
   };
 }
