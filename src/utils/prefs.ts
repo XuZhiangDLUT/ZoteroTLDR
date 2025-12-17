@@ -67,7 +67,7 @@ export function getPrefs(): AddonPrefs {
   const maxOutputTokens =
     typeof maxOutputTokensPref === "number"
       ? maxOutputTokensPref
-      : parseInt(String(maxOutputTokensPref ?? "32768"), 10) || 32768;
+      : parseInt(String(maxOutputTokensPref ?? "65536"), 10) || 65536;
 
   const enableThoughts = Boolean(getPref("enableThoughts" as any) ?? true);
 

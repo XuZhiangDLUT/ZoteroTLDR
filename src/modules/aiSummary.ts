@@ -62,6 +62,8 @@ interface QueueTask<T> {
   error?: string;
   startTime?: number;
   endTime?: number;
+  output: string; // 任务输出内容
+  thoughtOutput: string; // 思考过程输出
 }
 
 /**
@@ -74,6 +76,8 @@ interface TaskInfo {
   error?: string;
   startTime?: number;
   endTime?: number;
+  output: string;
+  thoughtOutput: string;
 }
 
 /**
@@ -95,7 +99,7 @@ class GlobalTaskQueue<T> {
   private completedTasks: QueueTask<T>[] = [];
   private taskIdCounter = 0;
   private concurrency = 1;
-  private worker: ((task: T) => Promise<void>) | null = null;
+  private worker: ((task: T, taskId: number) => Promise<void>) | null = null;
   private displayNameExtractor: DisplayNameExtractor<T> = () => "任务";
   private eventListeners: Set<QueueEventListener> = new Set();
   private maxCompletedHistory = 50; // 最多保留的已完成任务历史
@@ -162,6 +166,8 @@ class GlobalTaskQueue<T> {
         displayName: task.displayName,
         status: task.status,
         startTime: task.startTime,
+        output: task.output,
+        thoughtOutput: task.thoughtOutput,
       });
     }
 
@@ -171,6 +177,8 @@ class GlobalTaskQueue<T> {
         id: task.id,
         displayName: task.displayName,
         status: task.status,
+        output: task.output,
+        thoughtOutput: task.thoughtOutput,
       });
     }
 
@@ -184,10 +192,35 @@ class GlobalTaskQueue<T> {
         error: task.error,
         startTime: task.startTime,
         endTime: task.endTime,
+        output: task.output,
+        thoughtOutput: task.thoughtOutput,
       });
     }
 
     return tasks;
+  }
+
+  /**
+   * 追加任务输出
+   */
+  appendOutput(taskId: number, chunk: string, isThought: boolean): void {
+    // 查找运行中的任务
+    const task = this.runningTasks.get(taskId);
+    if (task) {
+      if (isThought) {
+        task.thoughtOutput += chunk;
+      } else {
+        task.output += chunk;
+      }
+      this.emitEvent();
+    }
+  }
+
+  /**
+   * 获取当前运行中任务的 ID 列表
+   */
+  getRunningTaskIds(): number[] {
+    return Array.from(this.runningTasks.keys());
   }
 
   /**
@@ -202,7 +235,7 @@ class GlobalTaskQueue<T> {
   /**
    * 设置工作函数
    */
-  setWorker(fn: (task: T) => Promise<void>): void {
+  setWorker(fn: (task: T, taskId: number) => Promise<void>): void {
     this.worker = fn;
   }
 
@@ -218,6 +251,8 @@ class GlobalTaskQueue<T> {
         displayName: this.displayNameExtractor(data),
         resolve,
         reject,
+        output: "",
+        thoughtOutput: "",
       };
       this.queue.push(task);
       this.emitEvent();
@@ -277,7 +312,7 @@ class GlobalTaskQueue<T> {
     this.emitEvent();
 
     try {
-      await this.worker(task.data);
+      await this.worker(task.data, task.id);
       task.status = "completed";
       task.resolve();
     } catch (e) {
@@ -600,6 +635,7 @@ async function summarizeSinglePdf(
   item: Zotero.Item,
   attachment: AttachmentInfo,
   prefs: AddonPrefs,
+  onStreamChunk?: (chunk: string, isThought: boolean) => void,
 ): Promise<void> {
   const title = item.getDisplayTitle();
   const abstract = (item.getField("abstractNote") as string) || "";
@@ -629,6 +665,7 @@ async function summarizeSinglePdf(
       pdfBase64,
       prompt,
       prefs,
+      onStreamChunk,
     });
   } else {
     // 本地解析模式：使用本地提取的文本
@@ -655,7 +692,7 @@ async function summarizeSinglePdf(
 /**
  * 执行单个摘要任务（带进度显示）
  */
-async function executeSummaryTask(taskData: SummaryTaskData): Promise<void> {
+async function executeSummaryTask(taskData: SummaryTaskData, taskId: number): Promise<void> {
   const { item, attachment, prefs } = taskData;
   const displayName = attachment.fileName || item.getDisplayTitle();
   const status = globalTaskQueue.getStatus();
@@ -675,8 +712,13 @@ async function executeSummaryTask(taskData: SummaryTaskData): Promise<void> {
     });
   }
 
+  // 流式输出回调
+  const onStreamChunk = (chunk: string, isThought: boolean) => {
+    globalTaskQueue.appendOutput(taskId, chunk, isThought);
+  };
+
   try {
-    await summarizeSinglePdf(item, attachment, prefs);
+    await summarizeSinglePdf(item, attachment, prefs, onStreamChunk);
     pw.changeLine({ text: `完成：${displayName}`, progress: 100 });
   } catch (e: any) {
     pw.changeLine({
@@ -706,6 +748,7 @@ class TaskQueuePanel {
   private dialogWindow: Window | null = null;
   private updateInterval: number | null = null;
   private eventListener: (() => void) | null = null;
+  private expandedTasks: Set<number> = new Set(); // 跟踪展开的任务 ID
 
   /**
    * 打开或聚焦面板
@@ -726,6 +769,8 @@ class TaskQueuePanel {
   private createPanel(): void {
     const dialogData: Record<string, any> = {
       loadCallback: () => {
+        // 设置对话框内容区域使用 flex 布局以填充可用空间
+        this.applyFlexLayout();
         this.setupEventListeners();
         this.updateContent();
       },
@@ -834,7 +879,8 @@ class TaskQueuePanel {
       tag: "div",
       id: "task-list-container",
       styles: {
-        maxHeight: "400px",
+        flex: "1",
+        minHeight: "200px",
         overflowY: "auto",
         border: "1px solid #ddd",
         borderRadius: "4px",
@@ -884,6 +930,96 @@ class TaskQueuePanel {
   }
 
   /**
+   * 应用 flex 布局使内容填充可用空间
+   */
+  private applyFlexLayout(): void {
+    if (!this.dialogWindow) return;
+    const doc = this.dialogWindow.document;
+
+    // 找到对话框的主要内容区域并应用 flex 布局
+    // ztoolkit.Dialog 会创建一个 table 布局，我们需要找到它并设置样式
+    const dialogBody = doc.querySelector("dialog, .dialog-body, [data-dialog-content]") as HTMLElement;
+    if (dialogBody) {
+      dialogBody.style.display = "flex";
+      dialogBody.style.flexDirection = "column";
+      dialogBody.style.height = "100%";
+    }
+
+    // 尝试找到包含任务列表的表格单元格并使其可伸缩
+    const taskListContainer = doc.getElementById("task-list-container") as HTMLElement | null;
+    if (taskListContainer) {
+      const parentCell = taskListContainer.closest("td, .dialog-cell") as HTMLElement | null;
+      if (parentCell) {
+        parentCell.style.flex = "1";
+        parentCell.style.display = "flex";
+        parentCell.style.flexDirection = "column";
+        parentCell.style.minHeight = "0";
+        parentCell.style.overflow = "hidden";
+      }
+      // 确保容器本身可以伸缩并支持滚动
+      taskListContainer.style.flex = "1";
+      taskListContainer.style.minHeight = "100px";
+      taskListContainer.style.maxHeight = "none";
+      taskListContainer.style.height = "100%";
+      taskListContainer.style.overflow = "auto";
+    }
+
+    // 设置对话框根元素的样式
+    const body = doc.body;
+    if (body) {
+      body.style.height = "100%";
+      body.style.margin = "0";
+      body.style.display = "flex";
+      body.style.flexDirection = "column";
+    }
+
+    // 找到表格并使其可伸缩
+    const table = doc.querySelector("table") as HTMLElement;
+    if (table) {
+      table.style.flex = "1";
+      table.style.display = "flex";
+      table.style.flexDirection = "column";
+      table.style.height = "100%";
+      table.style.minHeight = "0";
+
+      // 设置表格行的样式
+      const rows = table.querySelectorAll("tr");
+      rows.forEach((row: Element, index: number) => {
+        const rowEl = row as HTMLElement;
+        if (index === 3) {
+          // 任务列表所在的行（第4行，索引3）- 填充剩余空间
+          rowEl.style.flex = "1";
+          rowEl.style.display = "flex";
+          rowEl.style.flexDirection = "column";
+          rowEl.style.minHeight = "0";
+          rowEl.style.overflow = "hidden";
+
+          const cell = rowEl.querySelector("td") as HTMLElement | null;
+          if (cell) {
+            cell.style.flex = "1";
+            cell.style.display = "flex";
+            cell.style.flexDirection = "column";
+            cell.style.minHeight = "0";
+            cell.style.height = "100%";
+            cell.style.overflow = "hidden";
+          }
+        } else {
+          // 其他行固定高度，不伸缩
+          rowEl.style.flex = "0 0 auto";
+          rowEl.style.height = "auto";
+          rowEl.style.overflow = "visible";
+
+          const cell = rowEl.querySelector("td") as HTMLElement | null;
+          if (cell) {
+            cell.style.flex = "0 0 auto";
+            cell.style.height = "auto";
+          }
+        }
+      });
+    }
+  }
+
+  /**
    * 设置事件监听器
    */
   private setupEventListeners(): void {
@@ -900,6 +1036,40 @@ class TaskQueuePanel {
         this.updateContent();
       }
     }, 1000) as unknown as number;
+
+    // 使用事件委托处理点击事件
+    const taskListContainer = this.dialogWindow?.document.getElementById("task-list-container");
+    if (taskListContainer) {
+      taskListContainer.addEventListener("click", (e: Event) => {
+        const target = e.target as HTMLElement;
+        if (!target) return;
+
+        // 检查是否点击了取消按钮
+        const cancelButton = target.closest("button[data-cancel-task]") as HTMLElement;
+        if (cancelButton) {
+          e.stopPropagation();
+          const taskId = parseInt(cancelButton.dataset.cancelTask || "0", 10);
+          if (taskId) {
+            globalTaskQueue.cancelTask(taskId);
+          }
+          return;
+        }
+
+        // 检查是否点击了任务行（展开/收起输出）
+        const taskRow = target.closest("[data-toggle-task]") as HTMLElement;
+        if (taskRow) {
+          const taskId = parseInt(taskRow.dataset.toggleTask || "0", 10);
+          if (taskId) {
+            if (this.expandedTasks.has(taskId)) {
+              this.expandedTasks.delete(taskId);
+            } else {
+              this.expandedTasks.add(taskId);
+            }
+            this.updateContent();
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -938,52 +1108,63 @@ class TaskQueuePanel {
     for (const task of tasks) {
       const statusInfo = this.getStatusInfo(task.status);
       const timeInfo = this.getTimeInfo(task);
+      const hasOutput = task.output.length > 0 || task.thoughtOutput.length > 0;
+      const isExpanded = this.expandedTasks.has(task.id);
+      const isRunning = task.status === "running";
 
+      // 任务主体
       html += `
-        <div style="
-          display: flex;
-          align-items: center;
-          padding: 8px 12px;
+        <div class="task-item" data-task-id="${task.id}" style="
           border-bottom: 1px solid #eee;
-          ${task.status === "running" ? "background-color: #e3f2fd;" : ""}
+          ${isRunning ? "background-color: #e3f2fd;" : ""}
           ${task.status === "failed" ? "background-color: #ffebee;" : ""}
           ${task.status === "cancelled" ? "background-color: #fff3e0;" : ""}
         ">
-          <span style="
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: ${statusInfo.color};
-            margin-right: 10px;
-            ${task.status === "running" ? "animation: pulse 1s infinite;" : ""}
-          "></span>
-          <div style="flex: 1; min-width: 0;">
-            <div style="
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              font-weight: ${task.status === "running" ? "bold" : "normal"};
-            " title="${this.escapeHtml(task.displayName)}">
-              ${this.escapeHtml(task.displayName)}
+          <div ${hasOutput ? `data-toggle-task="${task.id}"` : ""} style="
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: ${hasOutput ? "pointer" : "default"};
+          ">
+            <span style="
+              display: inline-block;
+              width: 8px;
+              height: 8px;
+              border-radius: 50%;
+              background-color: ${statusInfo.color};
+              margin-right: 10px;
+              flex-shrink: 0;
+              ${isRunning ? "animation: pulse 1s infinite;" : ""}
+            "></span>
+            <div style="flex: 1; min-width: 0; overflow: hidden;">
+              <div style="
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-weight: ${isRunning ? "bold" : "normal"};
+              " title="${this.escapeHtml(task.displayName)}">
+                ${this.escapeHtml(task.displayName)}
+              </div>
+              <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${statusInfo.text}${timeInfo}
+                ${hasOutput ? ` · <span style="color: #1976d2; cursor: pointer;">${isExpanded ? "▼ 收起" : "▶ 展开输出"}</span>` : ""}
+                ${task.error ? ` - <span style="color: #c62828;">${this.escapeHtml(task.error.substring(0, 50))}${task.error.length > 50 ? "..." : ""}</span>` : ""}
+              </div>
             </div>
-            <div style="font-size: 11px; color: #666;">
-              ${statusInfo.text}${timeInfo}
-              ${task.error ? ` - <span style="color: #c62828;">${this.escapeHtml(task.error)}</span>` : ""}
-            </div>
+            ${task.status === "pending" ? `
+              <button
+                data-cancel-task="${task.id}"
+                style="
+                  padding: 4px 8px;
+                  font-size: 12px;
+                  cursor: pointer;
+                  margin-left: 8px;
+                  flex-shrink: 0;
+                "
+              >取消</button>
+            ` : ""}
           </div>
-          ${task.status === "pending" ? `
-            <button
-              data-task-id="${task.id}"
-              style="
-                padding: 4px 8px;
-                font-size: 12px;
-                cursor: pointer;
-                margin-left: 8px;
-              "
-              onclick="window.__cancelTask && window.__cancelTask(${task.id})"
-            >取消</button>
-          ` : ""}
+          ${this.renderOutputArea(task, isExpanded, isRunning)}
         </div>
       `;
     }
@@ -998,16 +1179,100 @@ class TaskQueuePanel {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
+        .output-preview {
+          font-family: Consolas, Monaco, monospace;
+          font-size: 11px;
+          line-height: 1.4;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+        .output-expanded {
+          max-height: 300px;
+          overflow-y: auto;
+        }
+        .output-collapsed {
+          max-height: 60px;
+          overflow: hidden;
+        }
+        .task-item:hover {
+          background-color: #f5f5f5;
+        }
+        [data-toggle-task]:hover {
+          background-color: rgba(0,0,0,0.02);
+        }
       `;
       doc.head.appendChild(style);
     }
 
-    // 设置取消任务的全局函数
-    (this.dialogWindow as any).__cancelTask = (taskId: number) => {
-      globalTaskQueue.cancelTask(taskId);
-    };
-
     taskList.innerHTML = html;
+
+    // 对于运行中的任务，滚动输出区域到底部
+    for (const task of tasks) {
+      if (task.status === "running" || this.expandedTasks.has(task.id)) {
+        const outputEl = doc.getElementById(`output-${task.id}`);
+        if (outputEl) {
+          outputEl.scrollTop = outputEl.scrollHeight;
+        }
+      }
+    }
+  }
+
+  /**
+   * 渲染输出区域
+   */
+  private renderOutputArea(task: TaskInfo, isExpanded: boolean, isRunning: boolean): string {
+    const hasOutput = task.output.length > 0 || task.thoughtOutput.length > 0;
+    if (!hasOutput) return "";
+
+    // 运行中的任务默认显示最后几行，可展开查看全部
+    // 已完成的任务默认收起，点击展开查看
+    const showOutput = isRunning || isExpanded;
+    if (!showOutput && !isRunning) {
+      return "";
+    }
+
+    const output = task.output || "";
+    const thoughtOutput = task.thoughtOutput || "";
+
+    // 获取显示内容
+    let displayContent = "";
+
+    // 如果有思考输出，显示思考标签
+    if (thoughtOutput) {
+      const thoughtLines = thoughtOutput.split("\n");
+      const thoughtPreview = isExpanded
+        ? thoughtOutput
+        : thoughtLines.slice(-3).join("\n");
+      displayContent += `<div style="color: #7c4dff; margin-bottom: 4px;"><b>[思考过程]</b></div>`;
+      displayContent += `<div style="color: #666; margin-bottom: 8px;">${this.escapeHtml(thoughtPreview)}</div>`;
+    }
+
+    // 显示主输出
+    if (output) {
+      const outputLines = output.split("\n");
+      const outputPreview = isExpanded
+        ? output
+        : outputLines.slice(-3).join("\n");
+
+      if (thoughtOutput) {
+        displayContent += `<div style="color: #1976d2; margin-bottom: 4px;"><b>[输出]</b></div>`;
+      }
+      displayContent += this.escapeHtml(outputPreview);
+    }
+
+    return `
+      <div
+        id="output-${task.id}"
+        class="output-preview ${isExpanded ? "output-expanded" : "output-collapsed"}"
+        style="
+          margin: 0 12px 8px 30px;
+          padding: 8px;
+          background-color: ${isRunning ? "#f8f9fa" : "#fafafa"};
+          border-radius: 4px;
+          border-left: 3px solid ${isRunning ? "#2196f3" : "#ddd"};
+        "
+      >${displayContent}</div>
+    `;
   }
 
   /**

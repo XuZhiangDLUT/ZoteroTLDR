@@ -17,6 +17,7 @@ export interface RemotePdfSummarizeOptions {
   pdfBase64: string; // PDF 文件的 base64 编码
   prompt: string;
   prefs: AddonPrefs;
+  onStreamChunk?: (chunk: string, isThought: boolean) => void; // 流式输出回调
 }
 
 export interface SummarizeResult {
@@ -132,7 +133,7 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
 export async function summarizeWithRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
-  const { prefs, prompt, pdfBase64 } = opts;
+  const { prefs, prompt, pdfBase64, onStreamChunk } = opts;
 
   // 构建 Gemini 原生 API 端点（流式）
   // 从 apiBase 中提取基础 URL（去掉 /v1 后缀如果有的话）
@@ -157,7 +158,7 @@ export async function summarizeWithRemotePdf(
     ],
     generationConfig: {
       temperature: prefs.temperature ?? 0.2,
-      maxOutputTokens: prefs.maxOutputTokens ?? 32768,
+      maxOutputTokens: prefs.maxOutputTokens ?? 65536,
     },
   };
 
@@ -184,88 +185,177 @@ export async function summarizeWithRemotePdf(
   }
 
   // 解析 SSE 流式响应
-  const result = await parseSSEResponse(res);
+  const result = await parseSSEResponse(res, onStreamChunk);
   return result;
 }
 
 /**
- * 解析 SSE 流式响应
+ * 解析 SSE 流式响应（真正的流式读取）
  */
-async function parseSSEResponse(res: Response): Promise<SummarizeResult> {
+async function parseSSEResponse(
+  res: Response,
+  onStreamChunk?: (chunk: string, isThought: boolean) => void,
+): Promise<SummarizeResult> {
   let markdown = "";
   let thoughtsMarkdown = "";
 
-  // 获取响应文本并解析 SSE 格式
-  const text = await res.text();
-  const lines = text.split("\n");
+  // 使用 ReadableStream 进行真正的流式读取
+  const reader = res.body?.getReader() as ReadableStreamDefaultReader<Uint8Array> | undefined;
+  if (!reader) {
+    // 降级到一次性读取
+    const text = await res.text();
+    return parseSingleResponse(text, onStreamChunk);
+  }
 
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const result = await (reader as any).read();
+      const { done, value } = result as { done: boolean; value?: Uint8Array };
+      if (done) break;
+
+      // 解码并追加到缓冲区
+      buffer += decoder.decode(value, { stream: true });
+
+      // 按行处理
+      const lines = buffer.split("\n");
+      // 保留最后一行（可能不完整）
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        // SSE 格式：data: {...json...}
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === "[DONE]") continue;
+
+          try {
+            const data = JSON.parse(jsonStr) as {
+              candidates?: Array<{
+                content?: {
+                  parts?: Array<{
+                    text?: string;
+                    thought?: boolean;
+                  }>;
+                };
+              }>;
+            };
+
+            // 解析每个响应片段
+            if (data.candidates?.[0]?.content?.parts) {
+              for (const part of data.candidates[0].content.parts) {
+                if (part.thought && part.text) {
+                  thoughtsMarkdown += part.text;
+                  onStreamChunk?.(part.text, true);
+                } else if (part.text) {
+                  markdown += part.text;
+                  onStreamChunk?.(part.text, false);
+                }
+              }
+            }
+          } catch (e) {
+            // 忽略解析错误，继续处理下一行
+            continue;
+          }
+        }
+      }
+    }
+
+    // 处理剩余的缓冲区
+    if (buffer.startsWith("data: ")) {
+      const jsonStr = buffer.slice(6).trim();
+      if (jsonStr && jsonStr !== "[DONE]") {
+        try {
+          const data = JSON.parse(jsonStr);
+          if (data.candidates?.[0]?.content?.parts) {
+            for (const part of data.candidates[0].content.parts) {
+              if (part.thought && part.text) {
+                thoughtsMarkdown += part.text;
+                onStreamChunk?.(part.text, true);
+              } else if (part.text) {
+                markdown += part.text;
+                onStreamChunk?.(part.text, false);
+              }
+            }
+          }
+        } catch (e) {
+          // 忽略
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // 如果流式解析没有获取到内容，尝试直接解析
+  if (!markdown && !thoughtsMarkdown) {
+    // 可能是非 SSE 格式的响应
+    return { markdown: "", thoughtsMarkdown: undefined };
+  }
+
+  return {
+    markdown: markdown.trim(),
+    thoughtsMarkdown: thoughtsMarkdown.trim() || undefined,
+  };
+}
+
+/**
+ * 解析单次响应（非流式或降级）
+ */
+function parseSingleResponse(
+  text: string,
+  onStreamChunk?: (chunk: string, isThought: boolean) => void,
+): SummarizeResult {
+  let markdown = "";
+  let thoughtsMarkdown = "";
+
+  // 尝试解析 SSE 格式
+  const lines = text.split("\n");
   for (const line of lines) {
-    // SSE 格式：data: {...json...}
     if (line.startsWith("data: ")) {
       const jsonStr = line.slice(6).trim();
       if (!jsonStr || jsonStr === "[DONE]") continue;
 
       try {
-        const data = JSON.parse(jsonStr) as {
-          candidates?: Array<{
-            content?: {
-              parts?: Array<{
-                text?: string;
-                thought?: boolean;
-              }>;
-            };
-          }>;
-        };
-
-        // 解析每个响应片段
+        const data = JSON.parse(jsonStr);
         if (data.candidates?.[0]?.content?.parts) {
           for (const part of data.candidates[0].content.parts) {
             if (part.thought && part.text) {
               thoughtsMarkdown += part.text;
+              onStreamChunk?.(part.text, true);
             } else if (part.text) {
               markdown += part.text;
+              onStreamChunk?.(part.text, false);
             }
           }
         }
       } catch (e) {
-        // 忽略解析错误，继续处理下一行
         continue;
       }
     }
   }
 
-  // 如果流式解析没有获取到内容，尝试直接解析整个响应（兼容非流式响应）
+  // 如果 SSE 解析失败，尝试直接解析 JSON
   if (!markdown && !thoughtsMarkdown) {
     try {
-      const data = JSON.parse(text) as {
-        candidates?: Array<{
-          content?: {
-            parts?: Array<{
-              text?: string;
-              thought?: boolean;
-            }>;
-          };
-        }>;
-        choices?: Array<{
-          message?: {
-            content?: string;
-          };
-        }>;
-      };
-
+      const data = JSON.parse(text);
       if (data.candidates?.[0]?.content?.parts) {
         for (const part of data.candidates[0].content.parts) {
           if (part.thought && part.text) {
             thoughtsMarkdown += part.text + "\n";
+            onStreamChunk?.(part.text + "\n", true);
           } else if (part.text) {
             markdown += part.text;
+            onStreamChunk?.(part.text, false);
           }
         }
       } else if (data.choices?.[0]?.message?.content) {
         markdown = data.choices[0].message.content;
+        onStreamChunk?.(markdown, false);
       }
     } catch (e) {
-      // 解析失败，返回空结果
+      // 解析失败
     }
   }
 

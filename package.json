@@ -12,13 +12,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your/repo.git"
+    "url": "git+https://github.com/XuZhiangDLUT/ZoteroTLDR.git"
   },
   "author": "Hanchen",
   "bugs": {
-    "url": "https://github.com/your/repo/issues"
+    "url": "https://github.com/XuZhiangDLUT/ZoteroTLDR/issues"
   },
-  "homepage": "https://github.com/your/repo#readme",
+  "homepage": "https://github.com/XuZhiangDLUT/ZoteroTLDR#readme",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "start": "zotero-plugin serve",
