@@ -20,6 +20,10 @@ pref("attachmentFilter", "!* - mono.pdf, !* - dual.pdf"); // 排除 - mono.pdf �
 // 文件筛选
 pref("maxFileSizeMB", 25); // 超过此大小（MB）的文件跳过，0=不限制
 pref("maxPageCount", 50); // 超过此页数的文件跳过，0=不限制
+pref("skipExistingSummary", true); // 跳过已有 AI 摘要的 PDF
+
+// 错误重试
+pref("retryOn524", 2); // 524 错误重试次数，0=不重试
 
 // 速率限制
 pref("rateLimitCount", 20); // 时间窗口内最大请求数

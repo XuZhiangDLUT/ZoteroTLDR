@@ -91,6 +91,17 @@
       <label value="(0=no limit)" style="margin-left: 5px"/>
     </hbox>
 
+    <hbox align="center">
+      <label value="Skip Summarized:" style="width: 120px"/>
+      <checkbox id="zotero-prefpane-__addonRef__-skipExistingSummary"
+        preference="extensions.zotero.__addonRef__.skipExistingSummary"/>
+      <label value="Retry on 524:" style="margin-left: 20px"/>
+      <html:input type="number" min="0" max="10"
+        id="zotero-prefpane-__addonRef__-retryOn524"
+        preference="extensions.zotero.__addonRef__.retryOn524" style="width: 60px"/>
+      <label value="times" style="margin-left: 5px"/>
+    </hbox>
+
     <vbox>
       <label value="Prompt Template:"/>
       <html:textarea id="zotero-prefpane-__addonRef__-prompt"
@@ -104,7 +115,9 @@
 
   <hbox align="center" style="margin-top: 10px; gap: 10px;">
     <label value="v__buildVersion__" style="color: #888; font-size: 11px;"/>
-    <html:a href="https://github.com/XuZhiangDLUT/ZoteroTLDR" target="_blank"
-      style="color: #0066cc; font-size: 11px; text-decoration: none;">GitHub Repository</html:a>
+    <label value="GitHub:" style="color: #888; font-size: 11px;"/>
+    <html:input type="text" readonly="true" value="https://github.com/XuZhiangDLUT/ZoteroTLDR"
+      style="width: 280px; font-size: 11px; color: #0066cc; border: 1px solid #ccc; padding: 2px 4px;"
+      onclick="this.select();"/>
   </hbox>
 </vbox>

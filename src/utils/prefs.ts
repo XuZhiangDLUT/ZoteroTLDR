@@ -41,6 +41,8 @@ export interface AddonPrefs {
   attachmentFilter: string;
   maxFileSizeMB: number;
   maxPageCount: number;
+  skipExistingSummary: boolean;
+  retryOn524: number;
   rateLimitCount: number;
   rateLimitWindowMinutes: number;
   prompt: string;
@@ -93,6 +95,11 @@ export function getPrefs(): AddonPrefs {
   const maxPageCountPref = getPref("maxPageCount" as any);
   const maxPageCount = Math.max(0, Number(maxPageCountPref ?? 50) || 0);
 
+  const skipExistingSummary = Boolean(getPref("skipExistingSummary" as any) ?? true);
+
+  const retryOn524Pref = getPref("retryOn524" as any);
+  const retryOn524 = Math.max(0, Number(retryOn524Pref ?? 2) || 0);
+
   const rateLimitCountPref = getPref("rateLimitCount" as any);
   const rateLimitCount = Math.max(1, Number(rateLimitCountPref ?? 20) || 20);
 
@@ -116,6 +123,8 @@ export function getPrefs(): AddonPrefs {
     attachmentFilter,
     maxFileSizeMB,
     maxPageCount,
+    skipExistingSummary,
+    retryOn524,
     rateLimitCount,
     rateLimitWindowMinutes,
     prompt,

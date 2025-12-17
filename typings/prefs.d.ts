@@ -20,6 +20,8 @@ declare namespace _ZoteroTypes {
       "attachmentFilter": string;
       "maxFileSizeMB": number;
       "maxPageCount": number;
+      "skipExistingSummary": boolean;
+      "retryOn524": number;
       "rateLimitCount": number;
       "rateLimitWindowMinutes": number;
       "prompt": string;

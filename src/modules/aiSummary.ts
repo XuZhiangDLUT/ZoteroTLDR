@@ -510,6 +510,50 @@ async function getPdfPageCount(filePath: string): Promise<number | null> {
 }
 
 /**
+ * 检查父条目下是否已存在指定 PDF 的 AI 摘要笔记
+ * 通过解析笔记标题中的 PDF 文件名来判断
+ * 格式: [AI 摘要] Title - filename.pdf (model @ timestamp)
+ */
+function hasExistingSummary(parentItem: Zotero.Item, pdfFileName: string): boolean {
+  try {
+    // 获取父条目的所有子笔记
+    const noteIDs = parentItem.getNotes ? parentItem.getNotes() : [];
+
+    for (const noteID of noteIDs) {
+      const note = Zotero.Items.get(noteID) as Zotero.Item;
+      if (!note) continue;
+
+      // 获取笔记内容
+      const noteContent = note.getNote ? note.getNote() : "";
+      if (!noteContent) continue;
+
+      // 检查是否是 AI 摘要笔记（以 [AI 摘要] 开头）
+      if (!noteContent.includes("[AI 摘要]")) continue;
+
+      // 提取笔记标题（第一行）
+      // 格式: <p><b>[AI 摘要] Title - filename.pdf (model @ timestamp)</b></p>
+      const titleMatch = noteContent.match(/<p><b>\[AI 摘要\][^<]*<\/b><\/p>/);
+      if (!titleMatch) continue;
+
+      const titleText = titleMatch[0];
+
+      // 检查标题中是否包含当前 PDF 文件名
+      // 需要转义特殊字符进行匹配
+      const escapedFileName = pdfFileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const fileNameRegex = new RegExp(escapedFileName, "i");
+
+      if (fileNameRegex.test(titleText)) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (_e) {
+    return false;
+  }
+}
+
+/**
  * 附件信息
  */
 interface AttachmentInfo {
@@ -551,6 +595,15 @@ async function getEligibleAttachments(
 
     // 检查是否符合过滤规则
     if (!shouldProcessFile(fileName, prefs.attachmentFilter)) {
+      continue;
+    }
+
+    // 检查是否已存在 AI 摘要
+    if (prefs.skipExistingSummary && hasExistingSummary(item, fileName)) {
+      skipped.push({
+        fileName,
+        reason: "已存在 AI 摘要",
+      });
       continue;
     }
 
@@ -699,6 +752,48 @@ async function saveChildNote(
 }
 
 /**
+ * 带 524 重试的远端 PDF 摘要
+ */
+async function summarizeWithRemotePdfWithRetry(
+  opts: Parameters<typeof summarizeWithRemotePdf>[0] & { prefs: AddonPrefs },
+): Promise<SummarizeResult> {
+  const { prefs, onStreamChunk, ...restOpts } = opts;
+  const maxRetries = prefs.retryOn524;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await summarizeWithRemotePdf({
+        ...restOpts,
+        prefs,
+        onStreamChunk,
+      });
+    } catch (e: any) {
+      const errorMsg = e?.message || String(e);
+
+      // 如果是 524 错误且还有重试次数
+      if (errorMsg.includes("524") && attempt < maxRetries) {
+        const retryNum = attempt + 1;
+        onStreamChunk?.(
+          `\n[524 超时错误，正在进行第 ${retryNum}/${maxRetries} 次重试...]\n`,
+          false,
+        );
+        lastError = e;
+        // 等待一小段时间后重试
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        continue;
+      }
+
+      // 其他错误或重试次数用完，直接抛出
+      throw e;
+    }
+  }
+
+  // 不应该到达这里，但为了类型安全
+  throw lastError || new Error("未知错误");
+}
+
+/**
  * 处理单个条目的单个 PDF
  */
 async function summarizeSinglePdf(
@@ -731,7 +826,7 @@ async function summarizeSinglePdf(
     });
 
     try {
-      result = await summarizeWithRemotePdf({
+      result = await summarizeWithRemotePdfWithRetry({
         title,
         abstract,
         pdfBase64,
@@ -1562,6 +1657,21 @@ export class AISummaryModule {
           continue;
         }
 
+        // 获取父条目（用于检查已存在摘要）
+        const parentID = item.parentItemID;
+        const parent = parentID
+          ? (Zotero.Items.get(parentID) as Zotero.Item)
+          : item;
+
+        // 检查是否已存在 AI 摘要
+        if (prefs.skipExistingSummary && hasExistingSummary(parent, fileName)) {
+          allSkipped.push({
+            fileName,
+            reason: "已存在 AI 摘要",
+          });
+          continue;
+        }
+
         // 检查文件大小
         const fileSize = await getFileSize(filePath);
         if (prefs.maxFileSizeMB > 0) {
@@ -1610,11 +1720,6 @@ export class AISummaryModule {
             continue;
           }
         }
-
-        const parentID = item.parentItemID;
-        const parent = parentID
-          ? (Zotero.Items.get(parentID) as Zotero.Item)
-          : item;
 
         tasks.push({
           item: parent,
