@@ -474,6 +474,42 @@ function shouldProcessFile(fileName: string, filterRule: string): boolean {
 }
 
 /**
+ * 获取文件大小（字节）
+ */
+async function getFileSize(filePath: string): Promise<number> {
+  try {
+    const file = Zotero.File.pathToFile(filePath);
+    if (file.exists()) {
+      return file.fileSize;
+    }
+  } catch (_e) {
+    // 忽略错误
+  }
+  return 0;
+}
+
+/**
+ * 获取 PDF 页数
+ */
+async function getPdfPageCount(filePath: string): Promise<number | null> {
+  try {
+    // 使用 Zotero 内置的 PDF.js
+    const { pdfjsLib } = (Zotero as any).PDFWorker;
+    if (!pdfjsLib) {
+      return null;
+    }
+
+    const data = await Zotero.File.getBinaryContentsAsync(filePath);
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    const numPages = pdf.numPages;
+    pdf.destroy();
+    return numPages;
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
  * 附件信息
  */
 interface AttachmentInfo {
@@ -481,6 +517,8 @@ interface AttachmentInfo {
   fileName: string;
   filePath: string; // PDF 文件完整路径（用于远端解析）
   text: string; // 本地提取的文本（用于本地解析）
+  fileSize: number; // 文件大小（字节）
+  pageCount: number | null; // PDF 页数
 }
 
 /**
@@ -489,9 +527,10 @@ interface AttachmentInfo {
 async function getEligibleAttachments(
   item: Zotero.Item,
   prefs: AddonPrefs,
-): Promise<AttachmentInfo[]> {
+): Promise<{ attachments: AttachmentInfo[]; skipped: { fileName: string; reason: string }[] }> {
   const attIDs = item.getAttachments ? item.getAttachments() : [];
   const results: AttachmentInfo[] = [];
+  const skipped: { fileName: string; reason: string }[] = [];
 
   for (const id of attIDs) {
     const att = Zotero.Items.get(id) as Zotero.Item;
@@ -515,6 +554,33 @@ async function getEligibleAttachments(
       continue;
     }
 
+    // 检查文件大小
+    const fileSize = await getFileSize(filePath);
+    if (prefs.maxFileSizeMB > 0) {
+      const maxBytes = prefs.maxFileSizeMB * 1024 * 1024;
+      if (fileSize > maxBytes) {
+        const sizeMB = (fileSize / 1024 / 1024).toFixed(1);
+        skipped.push({
+          fileName,
+          reason: `文件过大 (${sizeMB}MB > ${prefs.maxFileSizeMB}MB)`,
+        });
+        continue;
+      }
+    }
+
+    // 检查 PDF 页数
+    let pageCount: number | null = null;
+    if (prefs.maxPageCount > 0) {
+      pageCount = await getPdfPageCount(filePath);
+      if (pageCount !== null && pageCount > prefs.maxPageCount) {
+        skipped.push({
+          fileName,
+          reason: `页数过多 (${pageCount}页 > ${prefs.maxPageCount}页)`,
+        });
+        continue;
+      }
+    }
+
     // 根据解析模式决定是否需要提取本地文本
     let text = "";
     if (prefs.pdfParseMode === "local") {
@@ -528,10 +594,12 @@ async function getEligibleAttachments(
         }
       } catch (_e) {
         // 本地解析模式下，无法获取文本则跳过
+        skipped.push({ fileName, reason: "无法提取文本" });
         continue;
       }
       // 本地模式下，没有文本则跳过
       if (!text) {
+        skipped.push({ fileName, reason: "文本为空" });
         continue;
       }
     }
@@ -541,10 +609,12 @@ async function getEligibleAttachments(
       fileName,
       filePath,
       text,
+      fileSize,
+      pageCount,
     });
   }
 
-  return results;
+  return { attachments: results, skipped };
 }
 
 /**
@@ -645,6 +715,7 @@ async function summarizeSinglePdf(
   await rateLimiter.waitForSlot(prefs.rateLimitCount, windowMs);
 
   let result: SummarizeResult;
+  let usedLocalFallback = false;
 
   if (prefs.pdfParseMode === "remote") {
     // 远端解析模式：直接上传 PDF 文件
@@ -659,14 +730,63 @@ async function summarizeSinglePdf(
       fileName: attachment.fileName,
     });
 
-    result = await summarizeWithRemotePdf({
-      title,
-      abstract,
-      pdfBase64,
-      prompt,
-      prefs,
-      onStreamChunk,
-    });
+    try {
+      result = await summarizeWithRemotePdf({
+        title,
+        abstract,
+        pdfBase64,
+        prompt,
+        prefs,
+        onStreamChunk,
+      });
+    } catch (e: any) {
+      // 检查是否是 413 错误（请求体过大），自动降级到本地模式
+      const errorMsg = e?.message || String(e);
+      if (errorMsg.includes("413")) {
+        onStreamChunk?.("\n[413 错误：PDF 过大，自动切换到本地解析模式...]\n", false);
+
+        // 尝试获取本地文本
+        let localText = attachment.text;
+        if (!localText) {
+          try {
+            const txt = await (attachment.item as any).attachmentText;
+            if (txt) {
+              const fullText = String(txt);
+              localText = fullText.length > prefs.maxChars
+                ? fullText.slice(0, prefs.maxChars)
+                : fullText;
+            }
+          } catch (_e) {
+            throw new Error("413 错误且无法获取本地文本，请手动切换到本地解析模式");
+          }
+        }
+
+        if (!localText) {
+          throw new Error("413 错误且本地文本为空，请确保 PDF 已被 Zotero 索引");
+        }
+
+        // 使用本地文本重试
+        const localTemplate = prefs.prompt?.trim() || DEFAULT_PROMPT_TEMPLATE;
+        const localPrompt = buildPrompt(localTemplate, {
+          title,
+          abstract,
+          content: localText,
+          fileName: attachment.fileName,
+        });
+
+        result = await summarize({
+          title,
+          abstract,
+          content: localText,
+          prompt: localPrompt,
+          prefs,
+        });
+        usedLocalFallback = true;
+      } else {
+        // 其他错误直接抛出
+        throw e;
+      }
+    }
   } else {
     // 本地解析模式：使用本地提取的文本
     const template = prefs.prompt?.trim() || DEFAULT_PROMPT_TEMPLATE;
@@ -686,7 +806,12 @@ async function summarizeSinglePdf(
     });
   }
 
-  await saveChildNote(item, result.markdown, attachment.fileName, prefs);
+  // 如果使用了 fallback，在结果中添加说明
+  const finalMarkdown = usedLocalFallback
+    ? `> ⚠️ 注意：由于 PDF 文件过大，已自动切换到本地解析模式\n\n${result.markdown}`
+    : result.markdown;
+
+  await saveChildNote(item, finalMarkdown, attachment.fileName, prefs);
 }
 
 /**
@@ -1405,6 +1530,8 @@ export class AISummaryModule {
     const selectedAttachmentIds = new Set<number>();
     // 记录选中的常规条目
     const selectedRegularItems: Zotero.Item[] = [];
+    // 记录跳过的文件
+    const allSkipped: { fileName: string; reason: string }[] = [];
 
     // 第一遍：分类选中的项目
     for (const item of selectedItems) {
@@ -1435,6 +1562,33 @@ export class AISummaryModule {
           continue;
         }
 
+        // 检查文件大小
+        const fileSize = await getFileSize(filePath);
+        if (prefs.maxFileSizeMB > 0) {
+          const maxBytes = prefs.maxFileSizeMB * 1024 * 1024;
+          if (fileSize > maxBytes) {
+            const sizeMB = (fileSize / 1024 / 1024).toFixed(1);
+            allSkipped.push({
+              fileName,
+              reason: `文件过大 (${sizeMB}MB > ${prefs.maxFileSizeMB}MB)`,
+            });
+            continue;
+          }
+        }
+
+        // 检查 PDF 页数
+        let pageCount: number | null = null;
+        if (prefs.maxPageCount > 0) {
+          pageCount = await getPdfPageCount(filePath);
+          if (pageCount !== null && pageCount > prefs.maxPageCount) {
+            allSkipped.push({
+              fileName,
+              reason: `页数过多 (${pageCount}页 > ${prefs.maxPageCount}页)`,
+            });
+            continue;
+          }
+        }
+
         // 根据解析模式决定是否需要获取文本
         let text = "";
         if (prefs.pdfParseMode === "local") {
@@ -1448,9 +1602,11 @@ export class AISummaryModule {
             }
           } catch (e) {
             // 本地模式下无法获取文本则跳过
+            allSkipped.push({ fileName, reason: "无法提取文本" });
             continue;
           }
           if (!text) {
+            allSkipped.push({ fileName, reason: "文本为空" });
             continue;
           }
         }
@@ -1462,14 +1618,15 @@ export class AISummaryModule {
 
         tasks.push({
           item: parent,
-          attachment: { item, fileName, filePath, text },
+          attachment: { item, fileName, filePath, text, fileSize, pageCount },
         });
       }
     }
 
     // 处理选中的常规条目（获取其所有 PDF）
     for (const item of selectedRegularItems) {
-      const attachments = await getEligibleAttachments(item, prefs);
+      const { attachments, skipped } = await getEligibleAttachments(item, prefs);
+      allSkipped.push(...skipped);
       for (const att of attachments) {
         // 避免重复：如果这个 PDF 已经被直接选中处理过，跳过
         if (!selectedAttachmentIds.has(att.item.id)) {
@@ -1478,16 +1635,40 @@ export class AISummaryModule {
       }
     }
 
+    // 显示跳过的文件信息
+    if (allSkipped.length > 0) {
+      const skippedInfo = allSkipped
+        .slice(0, 10) // 最多显示10个
+        .map(s => `• ${s.fileName}: ${s.reason}`)
+        .join("\n");
+      const moreInfo = allSkipped.length > 10 ? `\n... 还有 ${allSkipped.length - 10} 个文件被跳过` : "";
+
+      const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
+        .createLine({
+          text: `跳过 ${allSkipped.length} 个文件`,
+          type: "default",
+        })
+        .show();
+      pw.startCloseTimer(5000);
+
+      // 在控制台输出详细信息
+      ztoolkit.log(`跳过的文件:\n${skippedInfo}${moreInfo}`);
+    }
+
     if (!tasks.length) {
       const modeHint = prefs.pdfParseMode === "local"
         ? "2. PDF 已被 Zotero 索引（有全文内容）\n"
         : "2. PDF 文件存在于本地\n";
+      const sizeHint = prefs.maxFileSizeMB > 0 ? `4. 文件大小不超过 ${prefs.maxFileSizeMB}MB\n` : "";
+      const pageHint = prefs.maxPageCount > 0 ? `5. PDF 页数不超过 ${prefs.maxPageCount}页\n` : "";
       ztoolkit.getGlobal("alert")(
         "未找到符合条件的 PDF 附件。\n" +
         "请确保：\n" +
         "1. 条目有 PDF 附件\n" +
         modeHint +
-        "3. 文件名符合过滤规则",
+        "3. 文件名符合过滤规则\n" +
+        sizeHint +
+        pageHint,
       );
       return;
     }

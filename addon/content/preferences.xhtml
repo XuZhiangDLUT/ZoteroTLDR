@@ -78,6 +78,19 @@
         preference="extensions.zotero.__addonRef__.attachmentFilter" style="width: 250px"/>
     </hbox>
 
+    <hbox align="center">
+      <label value="Max File Size:" style="width: 120px"/>
+      <html:input type="number" min="0" max="500"
+        id="zotero-prefpane-__addonRef__-maxFileSizeMB"
+        preference="extensions.zotero.__addonRef__.maxFileSizeMB" style="width: 70px"/>
+      <label value="MB (0=no limit)" style="margin-left: 5px"/>
+      <label value="Max Pages:" style="margin-left: 20px"/>
+      <html:input type="number" min="0" max="10000"
+        id="zotero-prefpane-__addonRef__-maxPageCount"
+        preference="extensions.zotero.__addonRef__.maxPageCount" style="width: 70px"/>
+      <label value="(0=no limit)" style="margin-left: 5px"/>
+    </hbox>
+
     <vbox>
       <label value="Prompt Template:"/>
       <html:textarea id="zotero-prefpane-__addonRef__-prompt"

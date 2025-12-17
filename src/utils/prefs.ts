@@ -39,6 +39,8 @@ export interface AddonPrefs {
   concurrency: number;
   maxChars: number;
   attachmentFilter: string;
+  maxFileSizeMB: number;
+  maxPageCount: number;
   rateLimitCount: number;
   rateLimitWindowMinutes: number;
   prompt: string;
@@ -85,6 +87,12 @@ export function getPrefs(): AddonPrefs {
 
   const attachmentFilter = ((getPref("attachmentFilter" as any) as string) || "").trim();
 
+  const maxFileSizeMBPref = getPref("maxFileSizeMB" as any);
+  const maxFileSizeMB = Math.max(0, Number(maxFileSizeMBPref ?? 25) || 0);
+
+  const maxPageCountPref = getPref("maxPageCount" as any);
+  const maxPageCount = Math.max(0, Number(maxPageCountPref ?? 50) || 0);
+
   const rateLimitCountPref = getPref("rateLimitCount" as any);
   const rateLimitCount = Math.max(1, Number(rateLimitCountPref ?? 20) || 20);
 
@@ -106,6 +114,8 @@ export function getPrefs(): AddonPrefs {
     concurrency,
     maxChars,
     attachmentFilter,
+    maxFileSizeMB,
+    maxPageCount,
     rateLimitCount,
     rateLimitWindowMinutes,
     prompt,

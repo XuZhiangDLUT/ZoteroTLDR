@@ -18,6 +18,8 @@ declare namespace _ZoteroTypes {
       "concurrency": number;
       "maxChars": string;
       "attachmentFilter": string;
+      "maxFileSizeMB": number;
+      "maxPageCount": number;
       "rateLimitCount": number;
       "rateLimitWindowMinutes": number;
       "prompt": string;

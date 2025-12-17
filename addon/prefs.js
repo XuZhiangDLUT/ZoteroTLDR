@@ -3,7 +3,7 @@ pref("apiBase", "https://x666.me/v1");
 pref("apiKey", "");
 pref("model", "gemini-2.5-pro-1m");
 pref("temperature", "0.2");
-pref("maxOutputTokens", "32768");
+pref("maxOutputTokens", "65536");
 
 // PDF 解析模式: "remote" = 远端解析（上传PDF）, "local" = 本地解析（提取文本）
 pref("pdfParseMode", "remote");
@@ -16,6 +16,10 @@ pref("thinkingBudget", -1); // -1=动态思考；0=关闭；>0=token数
 pref("concurrency", 1);
 pref("maxChars", "800000");
 pref("attachmentFilter", "!* - mono.pdf, !* - dual.pdf"); // 排除 - mono.pdf 和 - dual.pdf
+
+// 文件筛选
+pref("maxFileSizeMB", 25); // 超过此大小（MB）的文件跳过，0=不限制
+pref("maxPageCount", 50); // 超过此页数的文件跳过，0=不限制
 
 // 速率限制
 pref("rateLimitCount", 20); // 时间窗口内最大请求数
