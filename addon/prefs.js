@@ -1,6 +1,6 @@
 pref("apiBase", "https://api.openai.com/v1");
 pref("apiKey", "");
-pref("model", "gemini-2.5-pro");
+pref("model", "gemini-2.5-pro-1m");
 pref("temperature", 0.2);
 pref("maxChars", 800000);
 

@@ -74,7 +74,7 @@ export function getPrefs(): AddonPrefs {
     providerRaw === "gemini-v1beta" ? "gemini-v1beta" : "openai-compatible";
 
   const model =
-    (getPref("model" as any) as string) || "gemini-2.5-pro";
+    (getPref("model" as any) as string) || "gemini-2.5-pro-1m";
 
   const enableThoughts = Boolean(getPref("enableThoughts" as any));
   const thinkingBudgetPref = getPref("thinkingBudget" as any);
