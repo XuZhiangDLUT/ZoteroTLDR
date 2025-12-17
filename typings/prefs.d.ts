@@ -11,18 +11,11 @@ declare namespace _ZoteroTypes {
       "apiKey": string;
       "model": string;
       "temperature": number;
-      "maxChars": number;
-      "openaiApiBase": string;
-      "geminiApiBase": string;
-      "provider": string;
       "enableThoughts": boolean;
       "thinkingBudget": number;
-      "summarizeMode": string;
       "concurrency": number;
-      "attachmentFilterGlob": string;
-      "maxInlineMB": number;
-      "maxFileMB": number;
-      "saveThoughtsToNote": boolean;
+      "maxChars": number;
+      "attachmentFilter": string;
       "prompt": string;
     };
   }

@@ -1,22 +1,19 @@
-pref("apiBase", "https://api.openai.com/v1");
+// API 配置
+pref("apiBase", "https://x666.me/v1");
 pref("apiKey", "");
 pref("model", "gemini-2.5-pro-1m");
 pref("temperature", 0.2);
-pref("maxChars", 800000);
 
-// OpenAI-compatible & Gemini v1beta integration
-pref("openaiApiBase", "https://x666.me/v1");
-pref("geminiApiBase", "https://x666.me");
-pref("provider", "openai-compatible");
+// 思考模式
 pref("enableThoughts", true);
 pref("thinkingBudget", -1); // -1=动态思考；0=关闭；>0=token数
-pref("summarizeMode", "text-index"); // or pdf-native
-pref("concurrency", 2);
-pref("attachmentFilterGlob", "*-dual.pdf");
-pref("maxInlineMB", 20);
-pref("maxFileMB", 50);
-pref("saveThoughtsToNote", true);
 
+// 处理参数
+pref("concurrency", 2);
+pref("maxChars", 800000);
+pref("attachmentFilter", "!*-mono.pdf, !*-dual.pdf"); // 排除 -mono.pdf 和 -dual.pdf
+
+// 提示词模板
 pref(
   "prompt",
   `# 指令：一分钟掌握论文精髓 (深度解析 + 可视化对比)
@@ -54,7 +51,7 @@ pref(
 
 **核心看点：** [这篇文章最想说服我的一句话是什么？或者它想解答的核心问题是什么？直接写出来，并**将这个核心论点/问题加粗**。]
 
-**研究方法：** [作者是用什么“家伙事儿”来证明他的观点的？是做了实验，还是去某个地方待了很久，或是分析了一堆旧报纸？简单描述，并**将最关键的研究方法或工具加粗**。]
+**研究方法：** [作者是用什么"家伙事儿"来证明他的观点的？是做了实验，还是去某个地方待了很久，或是分析了一堆旧报纸？简单描述，并**将最关键的研究方法或工具加粗**。]
 
 **主要发现：** [作者最后得出了什么有意思的结论？用最直白的话告诉我，并**将最重要的那个发现加粗**。]
 
@@ -62,7 +59,7 @@ pref(
 
 ### 核心创新对比分析 (表格形式)
 
-[请创建一个Markdown表格，清晰对比本文方法与先前或论文中提到的其他方法。表格应至少包含以下四列：“对比维度”、“先前/其他方法”、“本文方法”、“主要优势”。如果原文信息不足，可适当留空或标注“未提及”。]
+[请创建一个Markdown表格，清晰对比本文方法与先前或论文中提到的其他方法。表格应至少包含以下四列："对比维度"、"先前/其他方法"、"本文方法"、"主要优势"。如果原文信息不足，可适当留空或标注"未提及"。]
 
 | 对比维度 | 先前/其他方法 | 本文方法 | 主要优势 |
 | :--- | :--- | :--- | :--- |

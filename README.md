@@ -1,99 +1,92 @@
-# Zotero AI Summarizer
+# Hanchen's Zotero TLDR
 
 [![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
-[简体中文 | Chinese README](./README-zhCN.md)
+[简体中文](./README-zhCN.md)
 
-A Zotero 7 plugin that generates structured summaries for your selected items using an LLM and saves the result as a child note. It supports rich Markdown-to-HTML rendering (via `marked`) so your bold, lists, headings, code blocks, and tables appear correctly in Zotero notes.
-
-![Result preview](./img/Attention-Is-All-You-Need.png)
+A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your PDF papers. Each PDF gets its own summary note with rich Markdown rendering (tables, lists, headings, code blocks).
 
 ## Features
 
-- AI summarization to child notes (right-click → "AI Summarize to Child Note")
-- Configurable API endpoint, API key, model, temperature, prompt template
-- Built-in "Test API" button in preferences to quickly verify connectivity
-- Markdown-to-HTML rendering for notes (tables, lists, headings, links, code blocks, inline code)
-- Multi-item support: run on multiple selected regular items
-- Batch processing friendly: select hundreds/thousands of items and run; with a local LLM endpoint you can keep Zotero running overnight and get summaries for your entire library
-- Simple, privacy-first: your API endpoint is user-configured
+- **AI Summarization**: Right-click → "AI 总结到子笔记" to generate structured summaries
+- **Per-PDF Processing**: Each PDF in an item generates its own separate note
+- **Gemini Integration**: Uses Gemini API via OpenAI-compatible proxy (e.g., x666.me)
+- **Thinking Mode**: Supports Gemini's thinking/reasoning capabilities
+- **PDF Filtering**: Filter PDFs by filename with glob patterns (supports AND/OR/NOT)
+- **Batch Processing**: Process multiple items concurrently
+- **Markdown Rendering**: Full support for tables, lists, headings, code blocks
+- **Customizable Prompts**: Use `{title}`, `{abstract}`, `{content}`, `{fileName}` variables
 
 ## Install
 
-1. Download the latest `.xpi` from Releases (or build locally; see below)
-2. Open Zotero → Tools → Add-ons → gear icon → Install Add-on From File…
-3. Select `zotero-ai-summarizer.xpi` and restart Zotero
+1. Download the latest `.xpi` from Releases (or build locally)
+2. Open Zotero → Tools → Add-ons → ⚙️ → Install Add-on From File…
+3. Select `hanchens-zotero-tldr.xpi` and restart Zotero
 
 ## Quick Start
 
-- In Zotero middle pane, select one or more items (regular items, not notes/attachments)
-- Right-click → "AI Summarize to Child Note"
-- The plugin will read attachments (PDF/HTML, up to a size cap) and generate a structured summary saved under each item as a child note
+1. Select one or more items (or PDF attachments) in Zotero
+2. Right-click → **"AI 总结到子笔记"**
+3. Each PDF will be processed and a summary note will be created
 
-## Preferences
+## Settings
 
-Zotero → Preferences → Extensions → AI-Summarizer
+**Zotero → Edit → Settings → Hanchen's Zotero TLDR**
 
-![Settings](./img/Setting.png)
+| Setting | Description | Default |
+|---------|-------------|---------|
+| API Base URL | OpenAI-compatible endpoint | `https://x666.me/v1` |
+| API Key | Your API key | (empty) |
+| Model | Model name | `gemini-2.5-pro-1m` |
+| Temperature | Creativity (0-2) | `0.2` |
+| Enable Thinking | Use Gemini thinking mode | `true` |
+| Thinking Budget | Token limit (-1=dynamic) | `-1` |
+| Concurrency | Parallel processing count | `2` |
+| Max Characters | Max text to extract per PDF | `800000` |
+| PDF Filter | Filename filter patterns | `!*-mono.pdf, !*-dual.pdf` |
+| Prompt Template | Customizable prompt | (detailed template) |
 
-- API Base: your OpenAI-compatible Chat Completions endpoint (e.g. https://api.openai.com/v1)
-- API Key: your key
-- Model: e.g. `gpt-4o-mini` (or your server-side model)
-- Temperature: default 0.2
-- Max Chars: the maximum characters to extract from attachments
-- Prompt Template: use variables `{title}`, `{abstract}`, `{content}`
-- Test API: quickly validates connectivity and credentials
+## PDF Filter Syntax
 
-### Default Values
+| Symbol | Meaning | Example |
+|--------|---------|---------|
+| `,` | OR | `*.pdf, *.PDF` → match either |
+| `;` | AND | `*.pdf; !*-mono.pdf` → .pdf but not -mono.pdf |
+| `!` | NOT (exclude) | `!*-dual.pdf` → exclude -dual.pdf |
+| `*` | Wildcard (any chars) | `paper*.pdf` |
+| `?` | Wildcard (single char) | `paper?.pdf` |
 
-- Runtime defaults can be edited in the Preferences pane
-- Initial defaults (post-install) are set in `addon/prefs.js`:
-  - `pref("prompt", "...")`
-  - `pref("temperature", 0.2)`
-- Fallback default prompt (if preference is empty) is in `src/modules/aiSummary.ts` (`defaultTpl`)
+**Default**: `!*-mono.pdf, !*-dual.pdf` (excludes -mono.pdf and -dual.pdf files)
 
-## Icons
+## Prompt Template Variables
 
-Replace these files with your PNG icons:
-
-- `addon/content/icons/favicon.png` (96×96)
-- `addon/content/icons/favicon@0.5x.png` (48×48)
-
-Then rebuild and reinstall the XPI.
+- `{title}` - Paper title
+- `{abstract}` - Paper abstract
+- `{content}` - Extracted PDF text
+- `{fileName}` - PDF filename
 
 ## Build from Source
 
-Requirements: Node.js (LTS), Git, Zotero 7
-
 ```bash
-# install deps
+# Install dependencies
 npm install
 
-# dev hot reload
+# Development (hot reload)
 npm start
 
-# production build (outputs XPI under .scaffold/build)
+# Production build
 npm run build
 ```
 
-The XPI will be created at:
-
-```
-.scaffold/build/zotero-ai-summarizer.xpi
-```
-
-If you encounter permission issues on macOS when running `npm install`, you can use a temp cache:
-
-```bash
-npm install --cache /tmp/.npm
-```
+Output: `.scaffold/build/hanchens-zotero-tldr.xpi`
 
 ## Troubleshooting
 
-- No right-click menu? Restart Zotero and ensure the plugin is enabled
-- API errors? Check API Base, Key, and Model; try the "Test API" button
-- Old icons or names still showing? Uninstall the old plugin first, then install the new XPI
+- **No menu?** Restart Zotero, ensure plugin is enabled
+- **API errors?** Check API Base, Key, Model; use "Test API" button
+- **No PDF text?** Ensure PDFs are indexed by Zotero (right-click → Reindex Item)
+- **PDF filtered out?** Check the PDF Filter setting matches your filenames
 
 ## License
 

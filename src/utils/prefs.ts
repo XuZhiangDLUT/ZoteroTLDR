@@ -5,19 +5,14 @@ type PluginPrefsMap = _ZoteroTypes.Prefs["PluginPrefsMap"];
 const PREFS_PREFIX = config.prefsPrefix;
 
 /**
- * Get preference value.
- * Wrapper of `Zotero.Prefs.get`.
- * @param key
+ * 获取偏好设置值
  */
 export function getPref<K extends keyof PluginPrefsMap>(key: K) {
   return Zotero.Prefs.get(`${PREFS_PREFIX}.${key}`, true) as PluginPrefsMap[K];
 }
 
 /**
- * Set preference value.
- * Wrapper of `Zotero.Prefs.set`.
- * @param key
- * @param value
+ * 设置偏好设置值
  */
 export function setPref<K extends keyof PluginPrefsMap>(
   key: K,
@@ -27,103 +22,63 @@ export function setPref<K extends keyof PluginPrefsMap>(
 }
 
 /**
- * Clear preference value.
- * Wrapper of `Zotero.Prefs.clear`.
- * @param key
+ * 插件配置接口
  */
-export function clearPref(key: string) {
-  return Zotero.Prefs.clear(`${PREFS_PREFIX}.${key}`, true);
-}
-
 export interface AddonPrefs {
-  openaiApiBase: string;
-  geminiApiBase: string;
-  provider: "openai-compatible" | "gemini-v1beta";
+  apiBase: string;
   model: string;
+  temperature: number;
   enableThoughts: boolean;
   thinkingBudget: number;
-  summarizeMode: "text-index" | "pdf-native";
   concurrency: number;
-  attachmentFilterGlob: string;
-  maxInlineMB: number;
-  maxFileMB: number;
-  saveThoughtsToNote: boolean;
-  prompt: string;
   maxChars: number;
-  temperature: number;
+  attachmentFilter: string;
+  prompt: string;
 }
 
 /**
- * Get all addon preferences with proper defaults and normalization.
+ * 获取所有偏好设置，带默认值
  */
 export function getPrefs(): AddonPrefs {
-  const openaiApiBase =
-    ((getPref("openaiApiBase" as any) as string) ||
-      (getPref("apiBase" as any) as string) ||
-      "https://x666.me/v1").replace(/\/$/, "");
-
-  const geminiApiBase =
-    ((getPref("geminiApiBase" as any) as string) || "https://x666.me").replace(
+  const apiBase =
+    ((getPref("apiBase" as any) as string) || "https://x666.me/v1").replace(
       /\/$/,
       "",
     );
 
-  const providerRaw = (getPref("provider" as any) as string) ||
-    "openai-compatible";
-  const provider: AddonPrefs["provider"] =
-    providerRaw === "gemini-v1beta" ? "gemini-v1beta" : "openai-compatible";
+  const model = (getPref("model" as any) as string) || "gemini-2.5-pro-1m";
 
-  const model =
-    (getPref("model" as any) as string) || "gemini-2.5-pro-1m";
+  const temperaturePref = getPref("temperature" as any);
+  const temperature =
+    typeof temperaturePref === "number" ? temperaturePref : 0.2;
 
-  const enableThoughts = Boolean(getPref("enableThoughts" as any));
+  const enableThoughts = Boolean(getPref("enableThoughts" as any) ?? true);
+
   const thinkingBudgetPref = getPref("thinkingBudget" as any);
   const thinkingBudget =
     typeof thinkingBudgetPref === "number"
       ? thinkingBudgetPref
       : Number(thinkingBudgetPref ?? -1) || -1;
 
-  const summarizeModeRaw = (getPref("summarizeMode" as any) as string) ||
-    "text-index";
-  const summarizeMode: AddonPrefs["summarizeMode"] =
-    summarizeModeRaw === "pdf-native" ? "pdf-native" : "text-index";
-
   const concurrencyPref = getPref("concurrency" as any);
-  const concurrency = Math.max(
-    1,
-    Number(concurrencyPref ?? 2) || 2,
-  );
+  const concurrency = Math.max(1, Math.min(10, Number(concurrencyPref ?? 2) || 2));
 
-  const attachmentFilterGlob =
-    ((getPref("attachmentFilterGlob" as any) as string) || "*-dual.pdf").trim();
+  const maxCharsPref = getPref("maxChars" as any);
+  const maxChars = Number(maxCharsPref ?? 800000) || 800000;
 
-  const maxInlineMBPref = getPref("maxInlineMB" as any);
-  const maxFileMBPref = getPref("maxFileMB" as any);
-
-  const maxInlineMB = Number(maxInlineMBPref ?? 20) || 20;
-  const maxFileMB = Number(maxFileMBPref ?? 50) || 50;
-
-  const saveThoughtsToNote = Boolean(getPref("saveThoughtsToNote" as any));
+  const attachmentFilter = ((getPref("attachmentFilter" as any) as string) || "").trim();
 
   const prompt = (getPref("prompt" as any) as string) || "";
-  const maxChars = Number(getPref("maxChars" as any) ?? 800000) || 800000;
-  const temperature = Number(getPref("temperature" as any) ?? 0.2) || 0.2;
 
   return {
-    openaiApiBase,
-    geminiApiBase,
-    provider,
+    apiBase,
     model,
+    temperature,
     enableThoughts,
     thinkingBudget,
-    summarizeMode,
     concurrency,
-    attachmentFilterGlob,
-    maxInlineMB,
-    maxFileMB,
-    saveThoughtsToNote,
-    prompt,
     maxChars,
-    temperature,
+    attachmentFilter,
+    prompt,
   };
 }

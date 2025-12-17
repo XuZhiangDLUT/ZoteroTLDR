@@ -1,20 +1,20 @@
 {
-  "name": "zotero-ai-summarizer",
+  "name": "hanchens-zotero-tldr",
   "type": "module",
   "version": "0.1.0",
-  "description": "AI summarizer for Zotero items",
+  "description": "AI-powered paper summarizer for Zotero - Extract PDF text and generate structured notes with Gemini",
   "config": {
-    "addonName": "Zotero AI Summarizer",
-    "addonID": "zotero-ai-summarizer@local",
-    "addonRef": "zoteroaisummarizer",
-    "addonInstance": "ZoteroAISummarizer",
-    "prefsPrefix": "extensions.zotero.zoteroaisummarizer"
+    "addonName": "Hanchen's Zotero TLDR",
+    "addonID": "hanchens-zotero-tldr@local",
+    "addonRef": "hanchenszoterotldr",
+    "addonInstance": "HanchensZoteroTLDR",
+    "prefsPrefix": "extensions.zotero.hanchenszoterotldr"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/your/repo.git"
   },
-  "author": "you",
+  "author": "Hanchen",
   "bugs": {
     "url": "https://github.com/your/repo/issues"
   },

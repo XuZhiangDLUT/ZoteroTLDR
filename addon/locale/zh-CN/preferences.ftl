@@ -1,23 +1,15 @@
-pref-title = AI-Summarizer 设置
-pref-ai-title = AI 总结设置
-pref-provider = 服务提供方
-pref-provider-openai = OpenAI 兼容 (如 x666.me/v1)
-pref-provider-gemini = Gemini v1beta 原生
-pref-api-base = OpenAI 兼容 Base URL
-pref-gemini-api-base = Gemini v1beta Base URL
+pref-title = Hanchen's Zotero TLDR 设置
+pref-api-base = API Base URL
 pref-api-key = API Key
 pref-model = 模型
 pref-temperature = 温度
 pref-enable-thoughts = 启用思考模式
-pref-thinking-budget = 思考预算 (token)
-pref-thinking-budget-help = -1 动态 / 0 关闭 / >0 限制思考 token
-pref-summarize-mode = 摘要模式
-pref-summarize-mode-text-index = 文本索引 (依赖 Zotero 全文索引)
-pref-summarize-mode-pdf-native = PDF 原生 (直接上传 PDF)
-pref-concurrency = 并发条目数
-pref-attachment-filter = 附件过滤 (glob)
-pref-save-thoughts-to-note = 将思考摘要保存为子笔记
-pref-max-chars = 截取最大字符数
+pref-thinking-budget = 思考预算
+pref-thinking-budget-help = (-1=动态 / 0=关闭 / >0=限制token)
+pref-concurrency = 并发数
+pref-max-chars = 最大字符数
+pref-attachment-filter = PDF 过滤
+pref-attachment-filter-help = (逗号=或; 分号=且; !=排除)
 pref-prompt = 提示词模板
 pref-api-test = 测试 API 连接
-pref-help = { $name } Build { $version } { $time }
+pref-help = { $name } v{ $version } ({ $time })

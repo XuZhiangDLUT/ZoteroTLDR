@@ -6,57 +6,22 @@
 >
   <label><html:h2 data-l10n-id="pref-title"></html:h2></label>
   <separator />
-  <label><html:h3 data-l10n-id="pref-ai-title"></html:h3></label>
 
-  <!-- Provider selection -->
+  <!-- API Base URL -->
   <hbox>
     <html:label
-      for="zotero-prefpane-__addonRef__-provider"
-      data-l10n-id="pref-provider"
-    ></html:label>
-    <html:select
-      id="zotero-prefpane-__addonRef__-provider"
-      preference="provider"
-    >
-      <html:option
-        value="openai-compatible"
-        data-l10n-id="pref-provider-openai"
-      ></html:option>
-      <html:option
-        value="gemini-v1beta"
-        data-l10n-id="pref-provider-gemini"
-      ></html:option>
-    </html:select>
-  </hbox>
-
-  <!-- OpenAI-compatible base URL -->
-  <hbox>
-    <html:label
-      for="zotero-prefpane-__addonRef__-openaiApiBase"
+      for="zotero-prefpane-__addonRef__-apiBase"
       data-l10n-id="pref-api-base"
     ></html:label>
     <html:input
       type="text"
-      id="zotero-prefpane-__addonRef__-openaiApiBase"
-      preference="openaiApiBase"
-      style="width: 420px"
+      id="zotero-prefpane-__addonRef__-apiBase"
+      preference="apiBase"
+      style="width: 400px"
     ></html:input>
   </hbox>
 
-  <!-- Gemini v1beta base URL -->
-  <hbox>
-    <html:label
-      for="zotero-prefpane-__addonRef__-geminiApiBase"
-      data-l10n-id="pref-gemini-api-base"
-    ></html:label>
-    <html:input
-      type="text"
-      id="zotero-prefpane-__addonRef__-geminiApiBase"
-      preference="geminiApiBase"
-      style="width: 420px"
-    ></html:input>
-  </hbox>
-
+  <!-- API Key -->
   <hbox>
     <html:label
       for="zotero-prefpane-__addonRef__-apiKey"
@@ -66,9 +31,11 @@
       type="password"
       id="zotero-prefpane-__addonRef__-apiKey"
       preference="apiKey"
-      style="width: 420px"
+      style="width: 400px"
     ></html:input>
   </hbox>
+
+  <!-- Model & Temperature -->
   <hbox>
     <html:label
       for="zotero-prefpane-__addonRef__-model"
@@ -78,11 +45,12 @@
       type="text"
       id="zotero-prefpane-__addonRef__-model"
       preference="model"
+      style="width: 200px"
     ></html:input>
     <html:label
       for="zotero-prefpane-__addonRef__-temperature"
       data-l10n-id="pref-temperature"
-      style="margin-left: 10px"
+      style="margin-left: 20px"
     ></html:label>
     <html:input
       type="number"
@@ -95,7 +63,7 @@
     ></html:input>
   </hbox>
 
-  <!-- Thinking / thoughts -->
+  <!-- Thinking Mode -->
   <hbox>
     <html:label
       for="zotero-prefpane-__addonRef__-enableThoughts"
@@ -109,42 +77,21 @@
     <html:label
       for="zotero-prefpane-__addonRef__-thinkingBudget"
       data-l10n-id="pref-thinking-budget"
-      style="margin-left: 10px"
+      style="margin-left: 20px"
     ></html:label>
     <html:input
       type="number"
       id="zotero-prefpane-__addonRef__-thinkingBudget"
       preference="thinkingBudget"
-      style="width: 80px"
+      style="width: 100px"
     ></html:input>
     <html:label
       data-l10n-id="pref-thinking-budget-help"
-      style="margin-left: 10px"
+      style="margin-left: 10px; color: #666"
     ></html:label>
   </hbox>
 
-  <!-- Summarize mode -->
-  <hbox>
-    <html:label
-      for="zotero-prefpane-__addonRef__-summarizeMode"
-      data-l10n-id="pref-summarize-mode"
-    ></html:label>
-    <html:select
-      id="zotero-prefpane-__addonRef__-summarizeMode"
-      preference="summarizeMode"
-    >
-      <html:option
-        value="text-index"
-        data-l10n-id="pref-summarize-mode-text-index"
-      ></html:option>
-      <html:option
-        value="pdf-native"
-        data-l10n-id="pref-summarize-mode-pdf-native"
-      ></html:option>
-    </html:select>
-  </hbox>
-
-  <!-- Concurrency -->
+  <!-- Concurrency & Max Chars -->
   <hbox>
     <html:label
       for="zotero-prefpane-__addonRef__-concurrency"
@@ -158,73 +105,67 @@
       preference="concurrency"
       style="width: 80px"
     ></html:input>
+    <html:label
+      for="zotero-prefpane-__addonRef__-maxChars"
+      data-l10n-id="pref-max-chars"
+      style="margin-left: 20px"
+    ></html:label>
+    <html:input
+      type="number"
+      min="10000"
+      max="2000000"
+      id="zotero-prefpane-__addonRef__-maxChars"
+      preference="maxChars"
+      style="width: 120px"
+    ></html:input>
   </hbox>
 
-  <!-- Attachment filter -->
+  <!-- Attachment Filter -->
   <hbox>
     <html:label
-      for="zotero-prefpane-__addonRef__-attachmentFilterGlob"
+      for="zotero-prefpane-__addonRef__-attachmentFilter"
       data-l10n-id="pref-attachment-filter"
     ></html:label>
     <html:input
       type="text"
-      id="zotero-prefpane-__addonRef__-attachmentFilterGlob"
-      preference="attachmentFilterGlob"
-      style="width: 420px"
+      id="zotero-prefpane-__addonRef__-attachmentFilter"
+      preference="attachmentFilter"
+      style="width: 300px"
     ></html:input>
+    <html:label
+      data-l10n-id="pref-attachment-filter-help"
+      style="margin-left: 10px; color: #666"
+    ></html:label>
   </hbox>
 
-  <!-- Save thoughts as note -->
-  <hbox>
-    <html:label
-      for="zotero-prefpane-__addonRef__-saveThoughtsToNote"
-      data-l10n-id="pref-save-thoughts-to-note"
-    ></html:label>
-    <html:input
-      type="checkbox"
-      id="zotero-prefpane-__addonRef__-saveThoughtsToNote"
-      preference="saveThoughtsToNote"
-    ></html:input>
-  </hbox>
-
-  <hbox>
-    <html:label
-      for="zotero-prefpane-__addonRef__-maxChars"
-      data-l10n-id="pref-max-chars"
-    ></html:label>
-    <html:input
-      type="number"
-      min="1000"
-      max="1000000"
-      id="zotero-prefpane-__addonRef__-maxChars"
-      preference="maxChars"
-    ></html:input>
-  </hbox>
+  <!-- Prompt Template -->
   <hbox>
     <html:label
       for="zotero-prefpane-__addonRef__-prompt"
       data-l10n-id="pref-prompt"
     ></html:label>
+  </hbox>
+  <hbox>
     <html:textarea
       id="zotero-prefpane-__addonRef__-prompt"
       preference="prompt"
-      rows="6"
-      cols="60"
+      rows="10"
+      style="width: 100%; font-family: monospace"
     ></html:textarea>
   </hbox>
-  <hbox>
+
+  <!-- Test API Button -->
+  <hbox style="margin-top: 10px">
     <button
       id="zotero-prefpane-__addonRef__-apitest"
       data-l10n-id="pref-api-test"
     ></button>
-  </hbox>
-  <hbox class="virtualized-table-container" flex="1" height="300px">
-    <html:div id="__addonRef__-table-container" />
   </hbox>
 </groupbox>
 <vbox>
   <html:label
     data-l10n-id="pref-help"
     data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
+    style="color: #888; font-size: 12px"
   ></html:label>
 </vbox>

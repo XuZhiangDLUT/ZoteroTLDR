@@ -1,18 +1,18 @@
 import { marked } from "marked";
 import { getPrefs, type AddonPrefs } from "../utils/prefs";
-import {
-  OpenAICompatProvider,
-  GeminiV1BetaProvider,
-  type LLMProvider,
-  type SummarizeResult,
-} from "../llm/providers";
+import { summarize, testAPI, type SummarizeResult } from "../llm/providers";
 
+/**
+ * 将 Markdown 转换为 HTML
+ */
 function markdownToHTML(md: string): string {
   if (!md) return "<p>(无内容)</p>";
-  // Use marked for full Markdown support (tables, lists, headings, code, etc.)
   return marked.parse(md) as string;
 }
 
+/**
+ * HTML 转义
+ */
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -20,94 +20,162 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/**
+ * 将 glob 模式转换为正则表达式
+ * 支持 * 和 ? 通配符
+ */
 function globToRegExp(glob: string): RegExp | null {
   const trimmed = glob.trim();
   if (!trimmed) return null;
   const escaped = trimmed
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*");
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
   return new RegExp(`^${escaped}$`, "i");
 }
 
-function getEligibleAttachments(item: Zotero.Item, prefs: AddonPrefs): Zotero.Item[] {
-  const attIDs = item.getAttachments ? item.getAttachments() : [];
-  const blocked = prefs.attachmentFilterGlob?.trim();
-  const blockedRe = blocked ? globToRegExp(blocked) : null;
+/**
+ * 解析过滤规则
+ * 支持：
+ *   - 单个规则: *.pdf
+ *   - 排除规则: !*-mono.pdf
+ *   - OR 规则 (逗号分隔): *.pdf, *.PDF
+ *   - AND 规则 (分号分隔): !*-mono.pdf; !*-dual.pdf
+ *   - 混合: *.pdf, *.PDF; !*-mono.pdf
+ *
+ * 逻辑：
+ *   1. 分号分隔的部分是 AND 关系（都必须满足）
+ *   2. 逗号分隔的部分是 OR 关系（满足任一即可）
+ *   3. ! 开头表示排除（NOT）
+ */
+function shouldProcessFile(fileName: string, filterRule: string): boolean {
+  if (!filterRule || !filterRule.trim()) {
+    return true; // 没有过滤规则，处理所有文件
+  }
 
-  const results: Zotero.Item[] = [];
+  // 按分号分割为 AND 组
+  const andGroups = filterRule.split(";").map(s => s.trim()).filter(Boolean);
+
+  for (const group of andGroups) {
+    // 按逗号分割为 OR 规则
+    const orRules = group.split(",").map(s => s.trim()).filter(Boolean);
+
+    if (orRules.length === 0) continue;
+
+    // 分离包含规则和排除规则
+    const includePatterns: string[] = [];
+    const excludePatterns: string[] = [];
+
+    for (const rule of orRules) {
+      if (rule.startsWith("!")) {
+        excludePatterns.push(rule.slice(1).trim());
+      } else {
+        includePatterns.push(rule);
+      }
+    }
+
+    // 检查排除规则（任一匹配则排除）
+    for (const pattern of excludePatterns) {
+      const re = globToRegExp(pattern);
+      if (re && re.test(fileName)) {
+        return false; // 匹配排除规则，不处理
+      }
+    }
+
+    // 检查包含规则（如果有包含规则，必须匹配其中之一）
+    if (includePatterns.length > 0) {
+      let matched = false;
+      for (const pattern of includePatterns) {
+        const re = globToRegExp(pattern);
+        if (re && re.test(fileName)) {
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        return false; // 有包含规则但没匹配，不处理
+      }
+    }
+  }
+
+  return true; // 所有 AND 组都通过
+}
+
+/**
+ * 附件信息
+ */
+interface AttachmentInfo {
+  item: Zotero.Item;
+  fileName: string;
+  text: string;
+}
+
+/**
+ * 获取条目的所有符合条件的 PDF 附件及其文本
+ */
+async function getEligibleAttachments(
+  item: Zotero.Item,
+  prefs: AddonPrefs,
+): Promise<AttachmentInfo[]> {
+  const attIDs = item.getAttachments ? item.getAttachments() : [];
+  const results: AttachmentInfo[] = [];
+
   for (const id of attIDs) {
     const att = Zotero.Items.get(id) as Zotero.Item;
+    const contentType =
+      (att.getField?.("contentType") as string) ||
+      ((att as any).attachmentContentType as string | undefined) ||
+      "";
 
+    // 只处理 PDF
+    if (!contentType.includes("application/pdf")) {
+      continue;
+    }
+
+    // 获取文件名
     const getFilePath = (att as any).getFilePath || att.getFilePath;
     const path = getFilePath ? getFilePath.call(att) : "";
     const fileName = path ? path.split(/[\\/]/).pop() ?? "" : "";
 
-    if (blockedRe && fileName && blockedRe.test(fileName)) {
-      // Skip blocked attachments, e.g. *-dual.pdf
+    // 检查是否符合过滤规则
+    if (!shouldProcessFile(fileName, prefs.attachmentFilter)) {
       continue;
     }
 
-    results.push(att);
+    // 提取文本
+    try {
+      const txt = await (att as any).attachmentText;
+      if (txt) {
+        const text = String(txt);
+        const truncated = text.length > prefs.maxChars
+          ? text.slice(0, prefs.maxChars)
+          : text;
+        results.push({
+          item: att,
+          fileName,
+          text: truncated,
+        });
+      }
+    } catch (_e) {
+      // 忽略单个附件读取失败
+    }
   }
 
   return results;
 }
 
-async function collectItemContextForTextIndex(
-  item: Zotero.Item,
-  attachments: Zotero.Item[],
-  prefs: AddonPrefs,
-): Promise<{
-  title: string;
-  abstractNote: string;
-  content: string;
-}> {
-  const title = item.getDisplayTitle();
-  const abstractNote = (item.getField("abstractNote") as string) || "";
-
-  const texts: string[] = [];
-  try {
-    for (const att of attachments) {
-      const ct =
-        (att.getField?.("contentType") as string) ||
-        ((att as any).attachmentContentType as string | undefined) ||
-        "";
-      if (
-        ct.includes("application/pdf") ||
-        ct.includes("text/html") ||
-        ct.includes("text/plain")
-      ) {
-        try {
-          const txt = await (att as any).attachmentText;
-          if (txt) texts.push(String(txt));
-        } catch (_e) {
-          // Ignore single attachment failures
-        }
-      }
-    }
-  } catch (_e) {
-    // Ignore full-text extraction failure
-  }
-
-  const maxChars = prefs.maxChars ?? 800000;
-  const joined = texts.join("\n\n");
-  const content = joined.length > maxChars ? joined.slice(0, maxChars) : joined;
-  return { title, abstractNote, content };
-}
-
-function replaceAll(str: string, search: string, replacement: string): string {
-  return str.split(search).join(replacement);
-}
-
+/**
+ * 构建提示词，替换模板变量
+ */
 function buildPrompt(
-  tpl: string,
-  data: { title: string; abstractNote: string; content: string },
+  template: string,
+  data: { title: string; abstract: string; content: string; fileName?: string },
 ): string {
-  let out = tpl;
-  out = replaceAll(out, "{title}", data.title || "");
-  out = replaceAll(out, "{abstract}", data.abstractNote || "");
-  out = replaceAll(out, "{content}", data.content || "");
-  return out;
+  return template
+    .split("{title}").join(data.title || "")
+    .split("{abstract}").join(data.abstract || "")
+    .split("{content}").join(data.content || "")
+    .split("{fileName}").join(data.fileName || "");
 }
 
 const DEFAULT_PROMPT_TEMPLATE =
@@ -115,133 +183,77 @@ const DEFAULT_PROMPT_TEMPLATE =
   "- 题目：{title}\n" +
   "- 摘要：{abstract}\n" +
   "- 正文片段（可能被截断）：\n{content}\n\n" +
-  "请用要点列出：研究问题、方法、数据/实验、主要结论、贡献与局限、可复现要点、与我研究的相关性（若未知可留空）。";
+  "请用要点列出：研究问题、方法、数据/实验、主要结论、贡献与局限。";
 
-function createProvider(prefs: AddonPrefs): LLMProvider {
-  if (prefs.provider === "gemini-v1beta") {
-    return new GeminiV1BetaProvider();
-  }
-  return new OpenAICompatProvider();
-}
-
+/**
+ * 保存摘要结果为子笔记
+ */
 async function saveChildNote(
   item: Zotero.Item,
   markdown: string,
-  thoughts: string | undefined,
+  pdfFileName: string,
   prefs: AddonPrefs,
-) {
+): Promise<void> {
   const html = markdownToHTML(markdown);
-  const thoughtHtml =
-    thoughts && prefs.saveThoughtsToNote
-      ? `<details><summary>思考摘要（点击展开）</summary><pre>${escapeHtml(
-          thoughts,
-        )}</pre></details>`
-      : "";
-
   const note = new Zotero.Item("note");
   const nowStr = new Date().toLocaleString();
-  const providerLabel =
-    prefs.provider === "gemini-v1beta" ? "Gemini" : "OpenAI-compatible";
 
-  const headerTitle = `[AI 摘要] ${item.getDisplayTitle?.() ?? ""} (${prefs.model} / ${providerLabel} @ ${nowStr})`;
+  const title = item.getDisplayTitle?.() ?? "";
+  const headerTitle = pdfFileName
+    ? `[AI 摘要] ${title} - ${pdfFileName} (${prefs.model} @ ${nowStr})`
+    : `[AI 摘要] ${title} (${prefs.model} @ ${nowStr})`;
   const headerHtml = `<p><b>${escapeHtml(headerTitle)}</b></p><hr>`;
 
   note.parentID = item.id;
-  note.setNote(headerHtml + html + thoughtHtml);
+  note.setNote(headerHtml + html);
   await note.saveTx();
 }
 
-async function summarizeItem(item: Zotero.Item): Promise<void> {
-  const prefs = getPrefs();
-  const attachments = getEligibleAttachments(item, prefs);
+/**
+ * 处理单个条目的单个 PDF
+ */
+async function summarizeSinglePdf(
+  item: Zotero.Item,
+  attachment: AttachmentInfo,
+  prefs: AddonPrefs,
+): Promise<void> {
+  const title = item.getDisplayTitle();
+  const abstract = (item.getField("abstractNote") as string) || "";
 
-  const ctx = await collectItemContextForTextIndex(item, attachments, prefs);
-  const tpl = prefs.prompt && prefs.prompt.trim().length
-    ? prefs.prompt
-    : DEFAULT_PROMPT_TEMPLATE;
-  const prompt = buildPrompt(tpl, ctx);
+  const template = prefs.prompt?.trim() || DEFAULT_PROMPT_TEMPLATE;
+  const prompt = buildPrompt(template, {
+    title,
+    abstract,
+    content: attachment.text,
+    fileName: attachment.fileName,
+  });
 
-  const provider = createProvider(prefs);
+  const result: SummarizeResult = await summarize({
+    title,
+    abstract,
+    content: attachment.text,
+    prompt,
+    prefs,
+  });
 
-  let result: SummarizeResult;
-
-  if (
-    prefs.provider === "gemini-v1beta" &&
-    prefs.summarizeMode === "pdf-native" &&
-    attachments.length &&
-    provider.summarizeWithPdfNative
-  ) {
-    try {
-      result = await provider.summarizeWithPdfNative({
-        title: ctx.title,
-        abstract: ctx.abstractNote,
-        prompt,
-        attachments,
-        prefs,
-      });
-    } catch (e) {
-      // Fallback to text-index mode if PDF-native fails
-      ztoolkit.log?.(
-        `Gemini v1beta pdf-native failed, fallback to text-index: ${e}`,
-      );
-      result = await provider.summarizeWithTextIndex({
-        title: ctx.title,
-        abstract: ctx.abstractNote,
-        prompt,
-        attachments,
-        prefs,
-      });
-    }
-  } else {
-    result = await provider.summarizeWithTextIndex({
-      title: ctx.title,
-      abstract: ctx.abstractNote,
-      prompt,
-      attachments,
-      prefs,
-    });
-  }
-
-  await saveChildNote(item, result.markdown, result.thoughtsMarkdown, prefs);
+  await saveChildNote(item, result.markdown, attachment.fileName, prefs);
 }
 
-export async function testAPIConnectivity(): Promise<string> {
-  try {
-    const prefs = getPrefs();
-    const provider = createProvider(prefs);
-
-    const pingPrompt =
-      prefs.provider === "gemini-v1beta"
-        ? "ping"
-        : "请直接回复：pong";
-
-    const result = await provider.summarizeWithTextIndex({
-      title: "Ping",
-      abstract: "",
-      prompt: pingPrompt,
-      attachments: [],
-      prefs,
-    });
-
-    const text = (result.markdown || "").trim();
-    return `连接成功：${text}`;
-  } catch (e: any) {
-    return `连接失败：${e?.message || e}`;
-  }
-}
-
+/**
+ * 并发控制执行
+ */
 async function runWithConcurrency<T>(
   inputs: T[],
   limit: number,
-  worker: (x: T, idx: number) => Promise<void>,
-) {
+  worker: (x: T) => Promise<void>,
+): Promise<void> {
   let i = 0;
   const pool: Promise<void>[] = [];
 
   const spawn = () => {
     if (i >= inputs.length) return;
     const idx = i++;
-    const p = worker(inputs[idx], idx).finally(spawn);
+    const p = worker(inputs[idx]).finally(spawn);
     pool.push(p);
   };
 
@@ -252,13 +264,18 @@ async function runWithConcurrency<T>(
   await Promise.all(pool);
 }
 
+/**
+ * AI 摘要模块
+ */
 export class AISummaryModule {
-  static registerContextMenu() {
-    const label = "AI 总结到子笔记";
+  /**
+   * 注册右键菜单
+   */
+  static registerContextMenu(): void {
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       id: `zotero-itemmenu-${addon.data.config.addonRef}-ai-summarize`,
-      label,
+      label: "AI 总结到子笔记",
       commandListener: async () => {
         try {
           await AISummaryModule.summarizeSelected();
@@ -269,43 +286,94 @@ export class AISummaryModule {
     });
   }
 
-  static async summarizeSelected() {
+  /**
+   * 处理选中的条目
+   */
+  static async summarizeSelected(): Promise<void> {
     const prefs = getPrefs();
     const pane = ztoolkit.getGlobal("ZoteroPane");
-    const items = (pane.getSelectedItems() as Zotero.Item[]).filter((it) =>
-      it.isRegularItem(),
-    );
+    const selectedItems = pane.getSelectedItems() as Zotero.Item[];
+
+    // 收集要处理的条目（去重）
+    const itemsMap = new Map<number, Zotero.Item>();
+
+    for (const item of selectedItems) {
+      if (item.isRegularItem()) {
+        itemsMap.set(item.id, item);
+      } else if (item.isAttachment()) {
+        const parentID = item.parentItemID;
+        if (parentID) {
+          const parent = Zotero.Items.get(parentID) as Zotero.Item;
+          if (parent && parent.isRegularItem()) {
+            itemsMap.set(parent.id, parent);
+          }
+        }
+      }
+    }
+
+    const items = Array.from(itemsMap.values());
+
     if (!items.length) {
+      ztoolkit.getGlobal("alert")("请先选择至少一个条目或其 PDF 附件。");
+      return;
+    }
+
+    // 收集所有要处理的 PDF（每个 PDF 单独处理）
+    const tasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
+
+    for (const item of items) {
+      const attachments = await getEligibleAttachments(item, prefs);
+      for (const att of attachments) {
+        tasks.push({ item, attachment: att });
+      }
+    }
+
+    if (!tasks.length) {
       ztoolkit.getGlobal("alert")(
-        "请先在中间列表选择至少一个条目（非笔记/非附件）。",
+        "未找到符合条件的 PDF 附件。\n" +
+        "请确保：\n" +
+        "1. 条目有 PDF 附件\n" +
+        "2. PDF 已被 Zotero 索引（有全文内容）\n" +
+        "3. 文件名符合过滤规则",
       );
       return;
     }
 
-    await runWithConcurrency(items, prefs.concurrency, async (it, idx) => {
+    // 并发处理每个 PDF
+    await runWithConcurrency(tasks, prefs.concurrency, async (task) => {
+      const displayName = task.attachment.fileName || task.item.getDisplayTitle();
       const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
         .createLine({
-          text: `处理：${it.getDisplayTitle()}`,
+          text: `处理：${displayName}`,
           progress: 10,
         })
         .show();
+
       try {
-        await summarizeItem(it);
-        pw.changeLine({ text: "完成", progress: 100 });
+        await summarizeSinglePdf(task.item, task.attachment, prefs);
+        pw.changeLine({ text: `完成：${displayName}`, progress: 100 });
       } catch (e: any) {
         pw.changeLine({
-          text: `失败：${it.getDisplayTitle()} - ${e?.message || e}`,
+          text: `失败：${displayName} - ${e?.message || e}`,
           progress: 100,
           type: "error",
         });
       } finally {
-        pw.startCloseTimer(1200);
+        pw.startCloseTimer(2000);
       }
     });
   }
 
-  static async testAPI() {
-    const result = await testAPIConnectivity();
-    ztoolkit.getGlobal("alert")(result);
+  /**
+   * 测试 API 连接
+   */
+  static async testAPI(): Promise<void> {
+    const prefs = getPrefs();
+    try {
+      const response = await testAPI(prefs);
+      ztoolkit.getGlobal("alert")(`连接成功：${response}`);
+    } catch (e: any) {
+      ztoolkit.getGlobal("alert")(`连接失败：${e?.message || e}`);
+    }
   }
 }

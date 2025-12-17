@@ -1,23 +1,15 @@
-pref-title = AI-Summarizer Settings
-pref-help = { $name } Build { $version } { $time }
-pref-ai-title = AI Summary Settings
-pref-provider = Provider
-pref-provider-openai = OpenAI-Compatible (e.g. x666.me/v1)
-pref-provider-gemini = Gemini v1beta (native)
-pref-api-base = OpenAI-Compatible Base URL
-pref-gemini-api-base = Gemini v1beta Base URL
+pref-title = Hanchen's Zotero TLDR Settings
+pref-api-base = API Base URL
 pref-api-key = API Key
 pref-model = Model
 pref-temperature = Temperature
-pref-enable-thoughts = Enable thinking mode
-pref-thinking-budget = Thinking budget (tokens)
-pref-thinking-budget-help = -1 dynamic / 0 off / >0 max thinking tokens
-pref-summarize-mode = Summarize mode
-pref-summarize-mode-text-index = Text index (via Zotero full-text)
-pref-summarize-mode-pdf-native = PDF native (send PDF directly)
+pref-enable-thoughts = Enable Thinking Mode
+pref-thinking-budget = Thinking Budget
+pref-thinking-budget-help = (-1=dynamic / 0=off / >0=limit tokens)
 pref-concurrency = Concurrency
-pref-attachment-filter = Attachment filter (glob)
-pref-save-thoughts-to-note = Save thought summary into note
-pref-max-chars = Max Chars
+pref-max-chars = Max Characters
+pref-attachment-filter = PDF Filter
+pref-attachment-filter-help = (comma=OR; semicolon=AND; !=exclude)
 pref-prompt = Prompt Template
-pref-api-test = Test API
+pref-api-test = Test API Connection
+pref-help = { $name } v{ $version } ({ $time })
