@@ -90,6 +90,90 @@ Output: `.scaffold/build/hanchens-zotero-tldr.xpi`
 - **No PDF text?** Ensure PDFs are indexed by Zotero (right-click → Reindex Item)
 - **PDF filtered out?** Check the PDF Filter setting matches your filenames
 
+## Development Notes
+
+### Zotero 7 Preferences Panel Fix
+
+If your Zotero 7 plugin's preferences panel shows in the settings list but displays blank content or another plugin's content when clicked, here's the solution:
+
+**Problem**: `Error: not well-formed XML` when loading `preferences.xhtml`
+
+**Root Causes & Solutions**:
+
+1. **Registration Location**:
+   - ❌ Don't register in `bootstrap.js`
+   - ✅ Register in `hooks.ts` → `onStartup()` after `initLocale()`
+
+2. **URL Format**:
+   - ❌ `rootURI + "content/preferences.xhtml"` (rootURI undefined in hooks.ts)
+   - ✅ `chrome://${addonRef}/content/preferences.xhtml`
+
+3. **preferences.xhtml Format**:
+   - ❌ Don't use `<?xml version="1.0"?>`, `<!DOCTYPE>`, or `<linkset>` elements
+   - ✅ Use minimal XUL format with single root `<vbox>`:
+
+```xml
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml">
+  <groupbox>
+    <label><html:h2>Settings Title</html:h2></label>
+    <hbox align="center">
+      <label value="Setting:" style="width: 120px"/>
+      <html:input type="text" id="..." preference="..." style="width: 350px"/>
+    </hbox>
+    <!-- more settings... -->
+  </groupbox>
+</vbox>
+```
+
+4. **hooks.ts Registration Code**:
+
+```typescript
+async function onStartup() {
+  await Promise.all([
+    Zotero.initializationPromise,
+    Zotero.unlockPromise,
+    Zotero.uiReadyPromise,
+  ]);
+
+  initLocale();
+
+  // Register Preferences Pane - use chrome:// URL
+  const addonRef = addon.data.config.addonRef;
+  Zotero.PreferencePanes.register({
+    pluginID: addon.data.config.addonID,
+    src: `chrome://${addonRef}/content/preferences.xhtml`,
+    label: addon.data.config.addonName,
+    image: `chrome://${addonRef}/content/icons/favicon.png`,
+  });
+
+  // ... rest of startup
+}
+```
+
+**Debugging Scripts** (Run in Zotero → Tools → Developer → Run JavaScript):
+
+```javascript
+// Check if plugin panes are registered
+(function() {
+    var panes = Zotero.PreferencePanes.pluginPanes || [];
+    return "Registered panes: " + panes.length + "\n" +
+           panes.map(p => p.pluginID).join("\n");
+})();
+
+// Test XML parsing
+(function() {
+    var url = "chrome://YOUR_ADDON_REF/content/preferences.xhtml";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, false);
+    xhr.send();
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(xhr.responseText, "application/xml");
+    var err = doc.querySelector("parsererror");
+    return err ? "❌ " + err.textContent.substring(0,200) : "✅ XML OK";
+})();
+```
+
 ## License
 
 AGPL-3.0-or-later

@@ -90,6 +90,90 @@ npm run build
 - **没有 PDF 文本？** 确保 PDF 已被 Zotero 索引（右键 → 重新索引条目）
 - **PDF 被过滤？** 检查 PDF 过滤设置是否匹配你的文件名
 
+## 开发笔记
+
+### Zotero 7 设置面板修复指南
+
+如果你的 Zotero 7 插件的设置面板在设置列表中显示，但点击后显示空白或显示其他插件的内容，以下是解决方案：
+
+**问题现象**：加载 `preferences.xhtml` 时报错 `Error: not well-formed XML`
+
+**根本原因与解决方案**：
+
+1. **注册位置**：
+   - ❌ 不要在 `bootstrap.js` 中注册
+   - ✅ 在 `hooks.ts` → `onStartup()` 中，`initLocale()` 之后注册
+
+2. **URL 格式**：
+   - ❌ `rootURI + "content/preferences.xhtml"`（rootURI 在 hooks.ts 中未定义）
+   - ✅ `chrome://${addonRef}/content/preferences.xhtml`
+
+3. **preferences.xhtml 格式**：
+   - ❌ 不要使用 `<?xml version="1.0"?>`、`<!DOCTYPE>` 或 `<linkset>` 元素
+   - ✅ 使用最简 XUL 格式，单一 `<vbox>` 根元素：
+
+```xml
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml">
+  <groupbox>
+    <label><html:h2>设置标题</html:h2></label>
+    <hbox align="center">
+      <label value="设置项:" style="width: 120px"/>
+      <html:input type="text" id="..." preference="..." style="width: 350px"/>
+    </hbox>
+    <!-- 更多设置... -->
+  </groupbox>
+</vbox>
+```
+
+4. **hooks.ts 注册代码**：
+
+```typescript
+async function onStartup() {
+  await Promise.all([
+    Zotero.initializationPromise,
+    Zotero.unlockPromise,
+    Zotero.uiReadyPromise,
+  ]);
+
+  initLocale();
+
+  // 注册设置面板 - 使用 chrome:// URL
+  const addonRef = addon.data.config.addonRef;
+  Zotero.PreferencePanes.register({
+    pluginID: addon.data.config.addonID,
+    src: `chrome://${addonRef}/content/preferences.xhtml`,
+    label: addon.data.config.addonName,
+    image: `chrome://${addonRef}/content/icons/favicon.png`,
+  });
+
+  // ... 其余启动代码
+}
+```
+
+**调试脚本**（在 Zotero → 工具 → 开发者 → 运行 JavaScript 中执行）：
+
+```javascript
+// 检查已注册的设置面板
+(function() {
+    var panes = Zotero.PreferencePanes.pluginPanes || [];
+    return "已注册面板数: " + panes.length + "\n" +
+           panes.map(p => p.pluginID).join("\n");
+})();
+
+// 测试 XML 解析
+(function() {
+    var url = "chrome://YOUR_ADDON_REF/content/preferences.xhtml";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, false);
+    xhr.send();
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(xhr.responseText, "application/xml");
+    var err = doc.querySelector("parsererror");
+    return err ? "❌ " + err.textContent.substring(0,200) : "✅ XML 正常";
+})();
+```
+
 ## 许可证
 
 AGPL-3.0-or-later

@@ -23,10 +23,6 @@ export default defineConfig({
       buildVersion: pkg.version,
       buildTime: "{{buildTime}}",
     },
-    fluent: {
-      prefLocales: ["zh-CN", "en-US"],
-      prefPaneHTML: "addon/content/preferences.xhtml",
-    },
     prefs: {
       prefix: pkg.config.prefsPrefix,
     },

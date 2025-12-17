@@ -12,6 +12,15 @@ async function onStartup() {
 
   initLocale();
 
+  // Register Preferences Pane
+  const addonRef = addon.data.config.addonRef;
+  Zotero.PreferencePanes.register({
+    pluginID: addon.data.config.addonID,
+    src: `chrome://${addonRef}/content/preferences.xhtml`,
+    label: addon.data.config.addonName,
+    image: `chrome://${addonRef}/content/icons/favicon.png`,
+  });
+
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
   );
