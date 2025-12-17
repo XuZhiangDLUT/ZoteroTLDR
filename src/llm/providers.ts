@@ -125,18 +125,20 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
 }
 
 /**
- * 通过 Gemini 原生 API 进行远端 PDF 解析
+ * 通过 Gemini 原生 API 进行远端 PDF 解析（流式响应）
  * 使用 inlineData 直接上传 PDF，由远端解析图片和文本
+ * 使用流式响应避免 Cloudflare 超时
  */
 export async function summarizeWithRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt, pdfBase64 } = opts;
 
-  // 构建 Gemini 原生 API 端点
+  // 构建 Gemini 原生 API 端点（流式）
   // 从 apiBase 中提取基础 URL（去掉 /v1 后缀如果有的话）
   const baseUrl = prefs.apiBase.replace(/\/v1\/?$/, "").replace(/\/$/, "");
-  const url = `${baseUrl}/v1/models/${prefs.model}:generateContent`;
+  // 使用 streamGenerateContent 端点 + alt=sse 参数
+  const url = `${baseUrl}/v1/models/${prefs.model}:streamGenerateContent?alt=sse`;
 
   // 构建 Gemini 原生格式的请求体
   const body: Record<string, unknown> = {
@@ -181,39 +183,90 @@ export async function summarizeWithRemotePdf(
     throw new Error(`远端 PDF 解析失败: ${res.status} ${errorText.substring(0, 500)}`);
   }
 
-  const data = (await res.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-          thought?: boolean;
-        }>;
-      };
-    }>;
-    // OpenAI 兼容格式备用
-    choices?: Array<{
-      message?: {
-        content?: string;
-      };
-    }>;
-  };
+  // 解析 SSE 流式响应
+  const result = await parseSSEResponse(res);
+  return result;
+}
 
-  // 解析 Gemini 原生格式响应
+/**
+ * 解析 SSE 流式响应
+ */
+async function parseSSEResponse(res: Response): Promise<SummarizeResult> {
   let markdown = "";
   let thoughtsMarkdown = "";
 
-  if (data.candidates?.[0]?.content?.parts) {
-    for (const part of data.candidates[0].content.parts) {
-      if (part.thought && part.text) {
-        thoughtsMarkdown += part.text + "\n";
-      } else if (part.text) {
-        markdown += part.text;
+  // 获取响应文本并解析 SSE 格式
+  const text = await res.text();
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    // SSE 格式：data: {...json...}
+    if (line.startsWith("data: ")) {
+      const jsonStr = line.slice(6).trim();
+      if (!jsonStr || jsonStr === "[DONE]") continue;
+
+      try {
+        const data = JSON.parse(jsonStr) as {
+          candidates?: Array<{
+            content?: {
+              parts?: Array<{
+                text?: string;
+                thought?: boolean;
+              }>;
+            };
+          }>;
+        };
+
+        // 解析每个响应片段
+        if (data.candidates?.[0]?.content?.parts) {
+          for (const part of data.candidates[0].content.parts) {
+            if (part.thought && part.text) {
+              thoughtsMarkdown += part.text;
+            } else if (part.text) {
+              markdown += part.text;
+            }
+          }
+        }
+      } catch (e) {
+        // 忽略解析错误，继续处理下一行
+        continue;
       }
     }
   }
-  // 备用：OpenAI 兼容格式
-  else if (data.choices?.[0]?.message?.content) {
-    markdown = data.choices[0].message.content;
+
+  // 如果流式解析没有获取到内容，尝试直接解析整个响应（兼容非流式响应）
+  if (!markdown && !thoughtsMarkdown) {
+    try {
+      const data = JSON.parse(text) as {
+        candidates?: Array<{
+          content?: {
+            parts?: Array<{
+              text?: string;
+              thought?: boolean;
+            }>;
+          };
+        }>;
+        choices?: Array<{
+          message?: {
+            content?: string;
+          };
+        }>;
+      };
+
+      if (data.candidates?.[0]?.content?.parts) {
+        for (const part of data.candidates[0].content.parts) {
+          if (part.thought && part.text) {
+            thoughtsMarkdown += part.text + "\n";
+          } else if (part.text) {
+            markdown += part.text;
+          }
+        }
+      } else if (data.choices?.[0]?.message?.content) {
+        markdown = data.choices[0].message.content;
+      }
+    } catch (e) {
+      // 解析失败，返回空结果
+    }
   }
 
   return {
