@@ -96,6 +96,22 @@ type QueueEventListener = () => void;
 type DisplayNameExtractor<T> = (data: T) => string;
 
 /**
+ * 判断是否为瞬态错误（用于延后重试）
+ */
+function isTransientErrorMessage(msg: string): boolean {
+  const lowered = msg.toLowerCase();
+  return (
+    lowered.includes("error in input stream") ||
+    lowered.includes("network error") ||
+    lowered.includes("econnreset") ||
+    lowered.includes("timeout") ||
+    lowered.includes("timed out") ||
+    lowered.includes("operation timed out") ||
+    lowered.includes("etimeout")
+  );
+}
+
+/**
  * 全局任务队列 - 跨调用的并发控制
  */
 class GlobalTaskQueue<T> {
@@ -398,6 +414,7 @@ interface SummaryTaskData {
   item: Zotero.Item;
   attachment: AttachmentInfo;
   prefs: AddonPrefs;
+  retryAttempts?: number; // 已重试次数（瞬态错误）
 }
 
 // 全局任务队列实例
@@ -902,55 +919,12 @@ async function summarizeWithRemotePdfWithRetry(
   opts: Parameters<typeof summarizeWithRemotePdf>[0] & { prefs: AddonPrefs },
 ): Promise<SummarizeResult> {
   const { prefs, onStreamChunk, ...restOpts } = opts;
-  const maxRetries = prefs.retryOnTransientErrors;
-  let lastError: Error | null = null;
-  const isTransientStreamError = (msg: string): boolean => {
-    const lowered = msg.toLowerCase();
-    return (
-      lowered.includes("error in input stream") ||
-      lowered.includes("network error") ||
-      lowered.includes("econnreset") ||
-      lowered.includes("timeout")
-    );
-  };
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await summarizeWithRemotePdf({
-        ...restOpts,
-        prefs,
-        onStreamChunk,
-      });
-    } catch (e: any) {
-      const errorMsg = e?.message || String(e);
-
-      const shouldRetry =
-        errorMsg.includes("524") || isTransientStreamError(errorMsg);
-
-      // 如果是 524 或常见流错误且还有重试次数
-      if (shouldRetry && attempt < maxRetries) {
-        const retryNum = attempt + 1;
-        const delayMs = Math.min(10000, 2000 * 2 ** attempt); // 指数退避，封顶 10s
-        const reasonText = errorMsg.includes("524")
-          ? "524 超时错误"
-          : "流式连接中断/超时 (input stream/network)";
-        onStreamChunk?.(
-          `\n[${reasonText}，正在进行第 ${retryNum}/${maxRetries} 次重试，等待 ${Math.round(delayMs / 1000)}s...]\n`,
-          false,
-        );
-        lastError = e;
-        // 等待一小段时间后重试
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
-      }
-
-      // 其他错误或重试次数用完，直接抛出
-      throw e;
-    }
-  }
-
-  // 不应该到达这里，但为了类型安全
-  throw lastError || new Error("未知错误");
+  // 只做一次调用，将瞬态错误交由队列层处理（移到队尾重试）
+  return await summarizeWithRemotePdf({
+    ...restOpts,
+    prefs,
+    onStreamChunk,
+  });
 }
 
 /**
@@ -1112,6 +1086,28 @@ async function executeSummaryTask(
     await summarizeSinglePdf(item, attachment, prefs, onStreamChunk);
     pw.changeLine({ text: `完成：${displayName}`, progress: 100 });
   } catch (e: any) {
+    // 瞬态错误：移到队列末尾，采用延后重试
+    const errorMsg = e?.message || String(e);
+    const attempts = taskData.retryAttempts ?? 0;
+    const maxRetries = prefs.retryOnTransientErrors ?? 0;
+    if (
+      maxRetries > 0 &&
+      attempts < maxRetries &&
+      isTransientErrorMessage(errorMsg)
+    ) {
+      const nextAttempts = attempts + 1;
+      pw.changeLine({
+        text: `瞬态错误，移到队尾重试 (${nextAttempts}/${maxRetries})：${errorMsg}`,
+        progress: 100,
+        type: "default",
+      });
+      globalTaskQueue.submit({
+        ...taskData,
+        retryAttempts: nextAttempts,
+      });
+      return; // 不抛出，让当前任务视为完成，新的任务排到队尾
+    }
+
     pw.changeLine({
       text: `失败：${displayName} - ${e?.message || e}`,
       progress: 100,
