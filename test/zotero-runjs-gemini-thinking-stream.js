@@ -49,13 +49,17 @@
     return;
   }
 
-  const normalizeBase = (s) => String(s || "").replace(/\/v1\/?$/, "").replace(/\/$/, "");
+  const normalizeBase = (s) =>
+    String(s || "")
+      .replace(/\/v1\/?$/, "")
+      .replace(/\/$/, "");
   const baseUrl = normalizeBase(API_BASE);
   const url = `${baseUrl}/v1/models/${MODEL}:streamGenerateContent?alt=sse`;
 
   const binaryStringToUint8Array = (binStr) => {
     const bytes = new Uint8Array(binStr.length);
-    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i) & 0xff;
+    for (let i = 0; i < binStr.length; i++)
+      bytes[i] = binStr.charCodeAt(i) & 0xff;
     return bytes;
   };
 
@@ -117,7 +121,8 @@
     // Zotero 返回的二进制字符串可直接 btoa，但先转 Uint8Array 再转回字符串更稳妥
     const bytes = binaryStringToUint8Array(bin);
     let binary = "";
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    for (let i = 0; i < bytes.length; i++)
+      binary += String.fromCharCode(bytes[i]);
     const pdfBase64 = btoa(binary);
 
     return { pdfBase64, fileName };
@@ -228,7 +233,12 @@
   const extractChunk = (part) => {
     if (typeof part?.text === "string" && part.text) return part.text;
     if (typeof part?.thought === "string" && part.thought) return part.thought;
-    if (part?.thought && typeof part.thought === "object" && typeof part.thought.text === "string" && part.thought.text) {
+    if (
+      part?.thought &&
+      typeof part.thought === "object" &&
+      typeof part.thought.text === "string" &&
+      part.thought.text
+    ) {
       return part.thought.text;
     }
     return "";
@@ -238,7 +248,9 @@
     return (
       part?.thought === true ||
       typeof part?.thought === "string" ||
-      (part?.thought && typeof part.thought === "object" && typeof part.thought.text === "string")
+      (part?.thought &&
+        typeof part.thought === "object" &&
+        typeof part.thought.text === "string")
     );
   };
 
@@ -273,9 +285,16 @@
         if (!Array.isArray(partsArr)) continue;
 
         for (const part of partsArr) {
-          if (!sawThoughtField && part && Object.prototype.hasOwnProperty.call(part, "thought")) {
+          if (
+            !sawThoughtField &&
+            part &&
+            Object.prototype.hasOwnProperty.call(part, "thought")
+          ) {
             sawThoughtField = true;
-            console.log("[DEBUG] 首次看到 part.thought 字段，part keys:", Object.keys(part));
+            console.log(
+              "[DEBUG] 首次看到 part.thought 字段，part keys:",
+              Object.keys(part),
+            );
           }
 
           const chunk = extractChunk(part);
@@ -318,7 +337,9 @@
     console.log("流式读取中断/报错:", e);
   } finally {
     clearTimeout(hardTimer);
-    try { reader.releaseLock(); } catch (_e) {}
+    try {
+      reader.releaseLock();
+    } catch (_e) {}
   }
 
   const totalMs = Date.now() - t0;

@@ -45,13 +45,13 @@
 
   const normalizeBase = (s) => String(s || "").replace(/\/$/, "");
   const base = normalizeBase(API_BASE);
-  const url = base.endsWith("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
+  const url = base.endsWith("/v1")
+    ? `${base}/chat/completions`
+    : `${base}/v1/chat/completions`;
 
   const body = {
     model: MODEL,
-    messages: [
-      { role: "user", content: userPrompt },
-    ],
+    messages: [{ role: "user", content: userPrompt }],
     stream: true,
     temperature: 0.2,
   };
@@ -180,7 +180,10 @@
         if (!loggedDeltaKeys && delta && Object.keys(delta).length) {
           loggedDeltaKeys = true;
           console.log("[DEBUG] 首次看到 delta keys:", Object.keys(delta));
-          console.log("[DEBUG] delta 示例:", JSON.stringify(delta).slice(0, 800));
+          console.log(
+            "[DEBUG] delta 示例:",
+            JSON.stringify(delta).slice(0, 800),
+          );
         }
 
         const r = pickReasoningChunk(delta);
@@ -200,7 +203,9 @@
     console.log("流式读取中断/报错:", e);
   } finally {
     clearTimeout(hardTimer);
-    try { reader.releaseLock(); } catch (_e) {}
+    try {
+      reader.releaseLock();
+    } catch (_e) {}
   }
 
   const totalMs = Date.now() - t0;
@@ -220,4 +225,3 @@
       "请到 Tools > Developer > Error Console 查看 [REASONING]/[TEXT] 实时输出。",
   );
 })();
-

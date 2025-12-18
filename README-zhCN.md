@@ -34,30 +34,30 @@
 
 **Zotero → 编辑 → 设置 → Hanchen's Zotero TLDR**
 
-| 设置项 | 说明 | 默认值 |
-|--------|------|--------|
-| API Base URL | OpenAI 兼容接口地址 | `https://x666.me/v1` |
-| API Key | API 密钥 | (空) |
-| 模型 | 模型名称 | `gemini-2.5-pro-1m` |
-| 温度 | 创造性 (0-2) | `0.2` |
-| 启用思考模式 | 使用 Gemini 思考功能 | `true` |
-| 思考预算 | Token 限制 (-1=动态) | `-1` |
-| 并发数 | 并行处理数量 | `1` |
-| 最大字符数 | 每个 PDF 最大提取字符 | `800000` |
-| 速率限制 | 时间窗口内最大请求数 | `20` |
-| 时间窗口 | 速率限制时间窗口（分钟） | `5` |
-| PDF 过滤 | 文件名过滤规则 | `!*-mono.pdf, !*-dual.pdf` |
-| 提示词模板 | 自定义提示词 | (详细模板) |
+| 设置项       | 说明                     | 默认值                     |
+| ------------ | ------------------------ | -------------------------- |
+| API Base URL | OpenAI 兼容接口地址      | `https://x666.me/v1`       |
+| API Key      | API 密钥                 | (空)                       |
+| 模型         | 模型名称                 | `gemini-2.5-pro-1m`        |
+| 温度         | 创造性 (0-2)             | `0.2`                      |
+| 启用思考模式 | 使用 Gemini 思考功能     | `true`                     |
+| 思考预算     | Token 限制 (-1=动态)     | `-1`                       |
+| 并发数       | 并行处理数量             | `1`                        |
+| 最大字符数   | 每个 PDF 最大提取字符    | `800000`                   |
+| 速率限制     | 时间窗口内最大请求数     | `20`                       |
+| 时间窗口     | 速率限制时间窗口（分钟） | `5`                        |
+| PDF 过滤     | 文件名过滤规则           | `!*-mono.pdf, !*-dual.pdf` |
+| 提示词模板   | 自定义提示词             | (详细模板)                 |
 
 ## PDF 过滤语法
 
-| 符号 | 含义 | 示例 |
-|------|------|------|
-| `,` | 或 (OR) | `*.pdf, *.PDF` → 匹配任一 |
-| `;` | 且 (AND) | `*.pdf; !*-mono.pdf` → .pdf 但排除 -mono.pdf |
-| `!` | 排除 (NOT) | `!*-dual.pdf` → 排除 -dual.pdf |
-| `*` | 通配符 (任意字符) | `paper*.pdf` |
-| `?` | 通配符 (单字符) | `paper?.pdf` |
+| 符号 | 含义              | 示例                                         |
+| ---- | ----------------- | -------------------------------------------- |
+| `,`  | 或 (OR)           | `*.pdf, *.PDF` → 匹配任一                    |
+| `;`  | 且 (AND)          | `*.pdf; !*-mono.pdf` → .pdf 但排除 -mono.pdf |
+| `!`  | 排除 (NOT)        | `!*-dual.pdf` → 排除 -dual.pdf               |
+| `*`  | 通配符 (任意字符) | `paper*.pdf`                                 |
+| `?`  | 通配符 (单字符)   | `paper?.pdf`                                 |
 
 **默认规则**：`!*-mono.pdf, !*-dual.pdf`（排除 -mono.pdf 和 -dual.pdf 文件）
 
@@ -155,22 +155,26 @@ async function onStartup() {
 
 ```javascript
 // 检查已注册的设置面板
-(function() {
-    var panes = Zotero.PreferencePanes.pluginPanes || [];
-    return "已注册面板数: " + panes.length + "\n" +
-           panes.map(p => p.pluginID).join("\n");
+(function () {
+  var panes = Zotero.PreferencePanes.pluginPanes || [];
+  return (
+    "已注册面板数: " +
+    panes.length +
+    "\n" +
+    panes.map((p) => p.pluginID).join("\n")
+  );
 })();
 
 // 测试 XML 解析
-(function() {
-    var url = "chrome://YOUR_ADDON_REF/content/preferences.xhtml";
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, false);
-    xhr.send();
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(xhr.responseText, "application/xml");
-    var err = doc.querySelector("parsererror");
-    return err ? "❌ " + err.textContent.substring(0,200) : "✅ XML 正常";
+(function () {
+  var url = "chrome://YOUR_ADDON_REF/content/preferences.xhtml";
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, false);
+  xhr.send();
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(xhr.responseText, "application/xml");
+  var err = doc.querySelector("parsererror");
+  return err ? "❌ " + err.textContent.substring(0, 200) : "✅ XML 正常";
 })();
 ```
 
@@ -178,12 +182,12 @@ async function onStartup() {
 
 当使用 OpenAI 兼容代理（例如走 Cloudflare）进行**远端 PDF 解析**时，长响应可能触发 **524（超时）**。本项目针对 524 主要采用了两种策略：
 
-1) **流式输出（SSE）作为“保活”与进度输出**
+1. **流式输出（SSE）作为“保活”与进度输出**
    - 远端 PDF 模式改用 Gemini 原生流式接口：`:streamGenerateContent?alt=sse`
    - 通过 `ReadableStream` 逐行解析 `data: {...json...}`（`src/llm/providers.ts` → `summarizeWithRemotePdf()` / `parseSSEResponse()`）
    - 把每个 chunk 通过 `onStreamChunk(chunk, isThought)` 回传，任务队列面板可实时更新
 
-2) **展示实时“思考/推理”片段（进度 + 调试）**
+2. **展示实时“思考/推理”片段（进度 + 调试）**
    - 开启“思考模式”后发送 `thinkingConfig.includeThoughts=true`，兼容的服务端会返回 `thought` parts
    - 将 `thought` 与正文输出分流（`isThought=true/false`），在任务队列面板中分区显示（`src/modules/aiSummary.ts`）
    - 通过右键菜单 **“查看 AI 任务队列”** 打开面板（支持展开/收起与运行中自动滚动）

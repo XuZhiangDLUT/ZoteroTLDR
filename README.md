@@ -34,30 +34,30 @@ A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your 
 
 **Zotero → Edit → Settings → Hanchen's Zotero TLDR**
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| API Base URL | OpenAI-compatible endpoint | `https://x666.me/v1` |
-| API Key | Your API key | (empty) |
-| Model | Model name | `gemini-2.5-pro-1m` |
-| Temperature | Creativity (0-2) | `0.2` |
-| Enable Thinking | Use Gemini thinking mode | `true` |
-| Thinking Budget | Token limit (-1=dynamic) | `-1` |
-| Concurrency | Parallel processing count | `1` |
-| Max Characters | Max text to extract per PDF | `800000` |
-| Rate Limit | Max requests per time window | `20` |
-| Rate Limit Window | Time window in minutes | `5` |
-| PDF Filter | Filename filter patterns | `!*-mono.pdf, !*-dual.pdf` |
-| Prompt Template | Customizable prompt | (detailed template) |
+| Setting           | Description                  | Default                    |
+| ----------------- | ---------------------------- | -------------------------- |
+| API Base URL      | OpenAI-compatible endpoint   | `https://x666.me/v1`       |
+| API Key           | Your API key                 | (empty)                    |
+| Model             | Model name                   | `gemini-2.5-pro-1m`        |
+| Temperature       | Creativity (0-2)             | `0.2`                      |
+| Enable Thinking   | Use Gemini thinking mode     | `true`                     |
+| Thinking Budget   | Token limit (-1=dynamic)     | `-1`                       |
+| Concurrency       | Parallel processing count    | `1`                        |
+| Max Characters    | Max text to extract per PDF  | `800000`                   |
+| Rate Limit        | Max requests per time window | `20`                       |
+| Rate Limit Window | Time window in minutes       | `5`                        |
+| PDF Filter        | Filename filter patterns     | `!*-mono.pdf, !*-dual.pdf` |
+| Prompt Template   | Customizable prompt          | (detailed template)        |
 
 ## PDF Filter Syntax
 
-| Symbol | Meaning | Example |
-|--------|---------|---------|
-| `,` | OR | `*.pdf, *.PDF` → match either |
-| `;` | AND | `*.pdf; !*-mono.pdf` → .pdf but not -mono.pdf |
-| `!` | NOT (exclude) | `!*-dual.pdf` → exclude -dual.pdf |
-| `*` | Wildcard (any chars) | `paper*.pdf` |
-| `?` | Wildcard (single char) | `paper?.pdf` |
+| Symbol | Meaning                | Example                                       |
+| ------ | ---------------------- | --------------------------------------------- |
+| `,`    | OR                     | `*.pdf, *.PDF` → match either                 |
+| `;`    | AND                    | `*.pdf; !*-mono.pdf` → .pdf but not -mono.pdf |
+| `!`    | NOT (exclude)          | `!*-dual.pdf` → exclude -dual.pdf             |
+| `*`    | Wildcard (any chars)   | `paper*.pdf`                                  |
+| `?`    | Wildcard (single char) | `paper?.pdf`                                  |
 
 **Default**: `!*-mono.pdf, !*-dual.pdf` (excludes -mono.pdf and -dual.pdf files)
 
@@ -155,22 +155,26 @@ async function onStartup() {
 
 ```javascript
 // Check if plugin panes are registered
-(function() {
-    var panes = Zotero.PreferencePanes.pluginPanes || [];
-    return "Registered panes: " + panes.length + "\n" +
-           panes.map(p => p.pluginID).join("\n");
+(function () {
+  var panes = Zotero.PreferencePanes.pluginPanes || [];
+  return (
+    "Registered panes: " +
+    panes.length +
+    "\n" +
+    panes.map((p) => p.pluginID).join("\n")
+  );
 })();
 
 // Test XML parsing
-(function() {
-    var url = "chrome://YOUR_ADDON_REF/content/preferences.xhtml";
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, false);
-    xhr.send();
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(xhr.responseText, "application/xml");
-    var err = doc.querySelector("parsererror");
-    return err ? "❌ " + err.textContent.substring(0,200) : "✅ XML OK";
+(function () {
+  var url = "chrome://YOUR_ADDON_REF/content/preferences.xhtml";
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, false);
+  xhr.send();
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(xhr.responseText, "application/xml");
+  var err = doc.querySelector("parsererror");
+  return err ? "❌ " + err.textContent.substring(0, 200) : "✅ XML OK";
 })();
 ```
 
@@ -178,12 +182,12 @@ async function onStartup() {
 
 When using an OpenAI-compatible proxy (e.g. Cloudflare) for long remote PDF parsing, the request may hit **524 (timeout)**. This project uses two strategies to reduce 524 and to make long-running tasks observable:
 
-1) **Streamed response (SSE) to keep the connection alive**
+1. **Streamed response (SSE) to keep the connection alive**
    - Remote PDF mode uses Gemini native streaming endpoint: `:streamGenerateContent?alt=sse`
    - Parse `data: {...json...}` incrementally via `ReadableStream` (`src/llm/providers.ts` → `summarizeWithRemotePdf()` / `parseSSEResponse()`)
    - Forward chunks through `onStreamChunk(chunk, isThought)` so the UI can update while the request is still running
 
-2) **Real-time “thoughts” display (progress + debugging)**
+2. **Real-time “thoughts” display (progress + debugging)**
    - If **Enable Thinking** is on, send `thinkingConfig.includeThoughts=true` so compatible providers may return `thought` parts
    - Split streamed chunks into normal output vs thought output (`isThought=true/false`), and show them separately in the Task Queue Panel (`src/modules/aiSummary.ts`)
    - Open the panel via context menu: **“查看 AI 任务队列”** (supports expand/collapse + auto-scroll for running tasks)

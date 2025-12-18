@@ -1,6 +1,11 @@
 import { marked } from "marked";
 import { getPrefs, type AddonPrefs } from "../utils/prefs";
-import { summarize, summarizeWithRemotePdf, testAPI, type SummarizeResult } from "../llm/providers";
+import {
+  summarize,
+  summarizeWithRemotePdf,
+  testAPI,
+  type SummarizeResult,
+} from "../llm/providers";
 
 /**
  * 速率限制器 - 滑动窗口实现
@@ -16,14 +21,14 @@ class RateLimiter {
   async waitForSlot(maxRequests: number, windowMs: number): Promise<void> {
     const now = Date.now();
     // 清理过期的时间戳
-    this.timestamps = this.timestamps.filter(t => now - t < windowMs);
+    this.timestamps = this.timestamps.filter((t) => now - t < windowMs);
 
     if (this.timestamps.length >= maxRequests) {
       // 计算需要等待的时间
       const oldestTimestamp = this.timestamps[0];
       const waitTime = oldestTimestamp + windowMs - now + 100; // 额外100ms缓冲
       if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
         // 递归检查，确保可以执行
         return this.waitForSlot(maxRequests, windowMs);
       }
@@ -141,9 +146,19 @@ class GlobalTaskQueue<T> {
   /**
    * 获取当前队列状态
    */
-  getStatus(): { queued: number; running: number; concurrency: number; completed: number; failed: number } {
-    const completed = this.completedTasks.filter(t => t.status === "completed").length;
-    const failed = this.completedTasks.filter(t => t.status === "failed" || t.status === "cancelled").length;
+  getStatus(): {
+    queued: number;
+    running: number;
+    concurrency: number;
+    completed: number;
+    failed: number;
+  } {
+    const completed = this.completedTasks.filter(
+      (t) => t.status === "completed",
+    ).length;
+    const failed = this.completedTasks.filter(
+      (t) => t.status === "failed" || t.status === "cancelled",
+    ).length;
     return {
       queued: this.queue.length,
       running: this.runningTasks.size,
@@ -278,14 +293,14 @@ class GlobalTaskQueue<T> {
    * 批量提交任务
    */
   submitBatch(items: T[]): Promise<void>[] {
-    return items.map(item => this.submit(item));
+    return items.map((item) => this.submit(item));
   }
 
   /**
    * 取消指定任务（只能取消等待中的任务）
    */
   cancelTask(taskId: number): boolean {
-    const index = this.queue.findIndex(t => t.id === taskId);
+    const index = this.queue.findIndex((t) => t.id === taskId);
     if (index !== -1) {
       const task = this.queue.splice(index, 1)[0];
       task.status = "cancelled";
@@ -440,11 +455,17 @@ function shouldProcessFile(fileName: string, filterRule: string): boolean {
   }
 
   // 按分号分割为 AND 组
-  const andGroups = filterRule.split(";").map(s => s.trim()).filter(Boolean);
+  const andGroups = filterRule
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   for (const group of andGroups) {
     // 按逗号分割为 OR 规则
-    const orRules = group.split(",").map(s => s.trim()).filter(Boolean);
+    const orRules = group
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     if (orRules.length === 0) continue;
 
@@ -598,7 +619,10 @@ async function getPdfPageCount(
  * 通过解析笔记标题中的 PDF 文件名来判断
  * 格式: [AI 摘要] Title - filename.pdf (model @ timestamp)
  */
-function hasExistingSummary(parentItem: Zotero.Item, pdfFileName: string): boolean {
+function hasExistingSummary(
+  parentItem: Zotero.Item,
+  pdfFileName: string,
+): boolean {
   try {
     // 获取父条目的所有子笔记
     const noteIDs = parentItem.getNotes ? parentItem.getNotes() : [];
@@ -623,7 +647,10 @@ function hasExistingSummary(parentItem: Zotero.Item, pdfFileName: string): boole
 
       // 检查标题中是否包含当前 PDF 文件名
       // 需要转义特殊字符进行匹配
-      const escapedFileName = pdfFileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedFileName = pdfFileName.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
       const fileNameRegex = new RegExp(escapedFileName, "i");
 
       if (fileNameRegex.test(titleText)) {
@@ -655,7 +682,10 @@ interface AttachmentInfo {
 async function getEligibleAttachments(
   item: Zotero.Item,
   prefs: AddonPrefs,
-): Promise<{ attachments: AttachmentInfo[]; skipped: { fileName: string; reason: string }[] }> {
+): Promise<{
+  attachments: AttachmentInfo[];
+  skipped: { fileName: string; reason: string }[];
+}> {
   const attIDs = item.getAttachments ? item.getAttachments() : [];
   const results: AttachmentInfo[] = [];
   const skipped: { fileName: string; reason: string }[] = [];
@@ -675,7 +705,7 @@ async function getEligibleAttachments(
     // 获取文件路径和文件名
     const getFilePath = (att as any).getFilePath || att.getFilePath;
     const filePath = getFilePath ? getFilePath.call(att) : "";
-    const fileName = filePath ? filePath.split(/[\\/]/).pop() ?? "" : "";
+    const fileName = filePath ? (filePath.split(/[\\/]/).pop() ?? "") : "";
 
     // 检查是否符合过滤规则
     if (!shouldProcessFile(fileName, prefs.attachmentFilter)) {
@@ -732,9 +762,10 @@ async function getEligibleAttachments(
         const txt = await (att as any).attachmentText;
         if (txt) {
           const fullText = String(txt);
-          text = fullText.length > prefs.maxChars
-            ? fullText.slice(0, prefs.maxChars)
-            : fullText;
+          text =
+            fullText.length > prefs.maxChars
+              ? fullText.slice(0, prefs.maxChars)
+              : fullText;
         }
       } catch (_e) {
         // 本地解析模式下，无法获取文本则跳过
@@ -769,10 +800,14 @@ function buildPrompt(
   data: { title: string; abstract: string; content: string; fileName?: string },
 ): string {
   return template
-    .split("{title}").join(data.title || "")
-    .split("{abstract}").join(data.abstract || "")
-    .split("{content}").join(data.content || "")
-    .split("{fileName}").join(data.fileName || "");
+    .split("{title}")
+    .join(data.title || "")
+    .split("{abstract}")
+    .join(data.abstract || "")
+    .split("{content}")
+    .join(data.content || "")
+    .split("{fileName}")
+    .join(data.fileName || "");
 }
 
 const DEFAULT_PROMPT_TEMPLATE =
@@ -871,7 +906,7 @@ async function summarizeWithRemotePdfWithRetry(
         );
         lastError = e;
         // 等待一小段时间后重试
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         continue;
       }
 
@@ -929,7 +964,10 @@ async function summarizeSinglePdf(
       // 检查是否是 413 错误（请求体过大），自动降级到本地模式
       const errorMsg = e?.message || String(e);
       if (errorMsg.includes("413")) {
-        onStreamChunk?.("\n[413 错误：PDF 过大，自动切换到本地解析模式...]\n", false);
+        onStreamChunk?.(
+          "\n[413 错误：PDF 过大，自动切换到本地解析模式...]\n",
+          false,
+        );
 
         // 尝试获取本地文本
         let localText = attachment.text;
@@ -938,17 +976,22 @@ async function summarizeSinglePdf(
             const txt = await (attachment.item as any).attachmentText;
             if (txt) {
               const fullText = String(txt);
-              localText = fullText.length > prefs.maxChars
-                ? fullText.slice(0, prefs.maxChars)
-                : fullText;
+              localText =
+                fullText.length > prefs.maxChars
+                  ? fullText.slice(0, prefs.maxChars)
+                  : fullText;
             }
           } catch (_e) {
-            throw new Error("413 错误且无法获取本地文本，请手动切换到本地解析模式");
+            throw new Error(
+              "413 错误且无法获取本地文本，请手动切换到本地解析模式",
+            );
           }
         }
 
         if (!localText) {
-          throw new Error("413 错误且本地文本为空，请确保 PDF 已被 Zotero 索引");
+          throw new Error(
+            "413 错误且本地文本为空，请确保 PDF 已被 Zotero 索引",
+          );
         }
 
         // 使用本地文本重试
@@ -1003,7 +1046,10 @@ async function summarizeSinglePdf(
 /**
  * 执行单个摘要任务（带进度显示）
  */
-async function executeSummaryTask(taskData: SummaryTaskData, taskId: number): Promise<void> {
+async function executeSummaryTask(
+  taskData: SummaryTaskData,
+  taskId: number,
+): Promise<void> {
   const { item, attachment, prefs } = taskData;
   const displayName = attachment.fileName || item.getDisplayTitle();
   const status = globalTaskQueue.getStatus();
@@ -1203,7 +1249,10 @@ class TaskQueuePanel {
         {
           tag: "div",
           id: "task-list",
-          properties: { innerHTML: "<div style='padding: 20px; text-align: center; color: #888;'>暂无任务</div>" },
+          properties: {
+            innerHTML:
+              "<div style='padding: 20px; text-align: center; color: #888;'>暂无任务</div>",
+          },
         },
       ],
     });
@@ -1250,7 +1299,9 @@ class TaskQueuePanel {
 
     // 找到对话框的主要内容区域并应用 flex 布局
     // ztoolkit.Dialog 会创建一个 table 布局，我们需要找到它并设置样式
-    const dialogBody = doc.querySelector("dialog, .dialog-body, [data-dialog-content]") as HTMLElement;
+    const dialogBody = doc.querySelector(
+      "dialog, .dialog-body, [data-dialog-content]",
+    ) as HTMLElement;
     if (dialogBody) {
       dialogBody.style.display = "flex";
       dialogBody.style.flexDirection = "column";
@@ -1258,9 +1309,13 @@ class TaskQueuePanel {
     }
 
     // 尝试找到包含任务列表的表格单元格并使其可伸缩
-    const taskListContainer = doc.getElementById("task-list-container") as HTMLElement | null;
+    const taskListContainer = doc.getElementById(
+      "task-list-container",
+    ) as HTMLElement | null;
     if (taskListContainer) {
-      const parentCell = taskListContainer.closest("td, .dialog-cell") as HTMLElement | null;
+      const parentCell = taskListContainer.closest(
+        "td, .dialog-cell",
+      ) as HTMLElement | null;
       if (parentCell) {
         parentCell.style.flex = "1";
         parentCell.style.display = "flex";
@@ -1350,14 +1405,18 @@ class TaskQueuePanel {
     }, 1000) as unknown as number;
 
     // 使用事件委托处理点击事件
-    const taskListContainer = this.dialogWindow?.document.getElementById("task-list-container");
+    const taskListContainer = this.dialogWindow?.document.getElementById(
+      "task-list-container",
+    );
     if (taskListContainer) {
       taskListContainer.addEventListener("click", (e: Event) => {
         const target = e.target as HTMLElement;
         if (!target) return;
 
         // 检查是否点击了取消按钮
-        const cancelButton = target.closest("button[data-cancel-task]") as HTMLElement;
+        const cancelButton = target.closest(
+          "button[data-cancel-task]",
+        ) as HTMLElement;
         if (cancelButton) {
           e.stopPropagation();
           const taskId = parseInt(cancelButton.dataset.cancelTask || "0", 10);
@@ -1368,9 +1427,14 @@ class TaskQueuePanel {
         }
 
         // 展开/收起思考过程
-        const thoughtToggle = target.closest("[data-toggle-thought]") as HTMLElement;
+        const thoughtToggle = target.closest(
+          "[data-toggle-thought]",
+        ) as HTMLElement;
         if (thoughtToggle) {
-          const taskId = parseInt(thoughtToggle.dataset.toggleThought || "0", 10);
+          const taskId = parseInt(
+            thoughtToggle.dataset.toggleThought || "0",
+            10,
+          );
           if (taskId) {
             if (this.expandedThoughtTasks.has(taskId)) {
               this.expandedThoughtTasks.delete(taskId);
@@ -1383,7 +1447,9 @@ class TaskQueuePanel {
         }
 
         // 展开/收起输出
-        const outputToggle = target.closest("[data-toggle-output]") as HTMLElement;
+        const outputToggle = target.closest(
+          "[data-toggle-output]",
+        ) as HTMLElement;
         if (outputToggle) {
           const taskId = parseInt(outputToggle.dataset.toggleOutput || "0", 10);
           if (taskId) {
@@ -1427,7 +1493,8 @@ class TaskQueuePanel {
     // 更新任务列表
     const tasks = globalTaskQueue.getAllTasks();
     if (tasks.length === 0) {
-      taskList.innerHTML = "<div style='padding: 20px; text-align: center; color: #888;'>暂无任务</div>";
+      taskList.innerHTML =
+        "<div style='padding: 20px; text-align: center; color: #888;'>暂无任务</div>";
       return;
     }
 
@@ -1481,7 +1548,9 @@ class TaskQueuePanel {
                 ${task.error ? ` - <span style="color: #c62828;">${this.escapeHtml(task.error.substring(0, 50))}${task.error.length > 50 ? "..." : ""}</span>` : ""}
               </div>
             </div>
-            ${task.status === "pending" ? `
+            ${
+              task.status === "pending"
+                ? `
               <button
                 data-cancel-task="${task.id}"
                 style="
@@ -1492,7 +1561,9 @@ class TaskQueuePanel {
                   flex-shrink: 0;
                 "
               >取消</button>
-            ` : ""}
+            `
+                : ""
+            }
           </div>
           ${this.renderTaskDetails(task, isThoughtExpanded, isOutputExpanded, isRunning)}
         </div>
@@ -1568,7 +1639,8 @@ class TaskQueuePanel {
     const thoughtOutput = task.thoughtOutput || "";
     const output = task.output || "";
 
-    const showThought = thoughtOutput.length > 0 && (isRunning || isThoughtExpanded);
+    const showThought =
+      thoughtOutput.length > 0 && (isRunning || isThoughtExpanded);
     const showOutput = output.length > 0 && (isRunning || isOutputExpanded);
 
     if (!showThought && !showOutput) return "";
@@ -1577,7 +1649,11 @@ class TaskQueuePanel {
     let html = "";
 
     if (showThought) {
-      const preview = this.buildStreamPreview(thoughtOutput, isThoughtExpanded, 3);
+      const preview = this.buildStreamPreview(
+        thoughtOutput,
+        isThoughtExpanded,
+        3,
+      );
       const header = isThoughtExpanded
         ? `<div style="color: #7c4dff; margin-bottom: 4px;"><b>[思考过程]</b></div>`
         : "";
@@ -1625,7 +1701,11 @@ class TaskQueuePanel {
    * - 若换行太少（尤其是单行不断追加），则改为取最后 N 行 * 固定字符数 的尾部窗口
    *   并手动插入换行，保证在折叠态也能看到“尾部”实时更新
    */
-  private buildStreamPreview(text: string, expanded: boolean, maxLines: number): string {
+  private buildStreamPreview(
+    text: string,
+    expanded: boolean,
+    maxLines: number,
+  ): string {
     const normalized = (text || "").replace(/\r\n/g, "\n");
     if (expanded) return normalized;
 
@@ -1815,7 +1895,7 @@ export class AISummaryModule {
 
         const getFilePath = (item as any).getFilePath || item.getFilePath;
         const filePath = getFilePath ? getFilePath.call(item) : "";
-        const fileName = filePath ? filePath.split(/[/\\]/).pop() ?? "" : "";
+        const fileName = filePath ? (filePath.split(/[/\\]/).pop() ?? "") : "";
 
         if (!shouldProcessFile(fileName, prefs.attachmentFilter)) {
           continue;
@@ -1877,9 +1957,10 @@ export class AISummaryModule {
             const txt = await (item as any).attachmentText;
             if (txt) {
               const fullText = String(txt);
-              text = fullText.length > prefs.maxChars
-                ? fullText.slice(0, prefs.maxChars)
-                : fullText;
+              text =
+                fullText.length > prefs.maxChars
+                  ? fullText.slice(0, prefs.maxChars)
+                  : fullText;
             }
           } catch (e) {
             // 本地模式下无法获取文本则跳过
@@ -1901,7 +1982,10 @@ export class AISummaryModule {
 
     // 处理选中的常规条目（获取其所有 PDF）
     for (const item of selectedRegularItems) {
-      const { attachments, skipped } = await getEligibleAttachments(item, prefs);
+      const { attachments, skipped } = await getEligibleAttachments(
+        item,
+        prefs,
+      );
       allSkipped.push(...skipped);
       for (const att of attachments) {
         // 避免重复：如果这个 PDF 已经被直接选中处理过，跳过
@@ -1915,9 +1999,12 @@ export class AISummaryModule {
     if (allSkipped.length > 0) {
       const skippedInfo = allSkipped
         .slice(0, 10) // 最多显示10个
-        .map(s => `• ${s.fileName}: ${s.reason}`)
+        .map((s) => `• ${s.fileName}: ${s.reason}`)
         .join("\n");
-      const moreInfo = allSkipped.length > 10 ? `\n... 还有 ${allSkipped.length - 10} 个文件被跳过` : "";
+      const moreInfo =
+        allSkipped.length > 10
+          ? `\n... 还有 ${allSkipped.length - 10} 个文件被跳过`
+          : "";
 
       const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
         .createLine({
@@ -1932,26 +2019,39 @@ export class AISummaryModule {
     }
 
     if (!tasks.length) {
-      const modeHint = prefs.pdfParseMode === "local"
-        ? "2. PDF 已被 Zotero 索引（有全文内容）\n"
-        : "2. PDF 文件存在于本地\n";
-      const sizeHint = prefs.maxFileSizeMB > 0 ? `4. 文件大小不超过 ${prefs.maxFileSizeMB}MB\n` : "";
-      const pageHint = prefs.maxPageCount > 0 ? `5. PDF 页数不超过 ${prefs.maxPageCount}页\n` : "";
+      const modeHint =
+        prefs.pdfParseMode === "local"
+          ? "2. PDF 已被 Zotero 索引（有全文内容）\n"
+          : "2. PDF 文件存在于本地\n";
+      const sizeHint =
+        prefs.maxFileSizeMB > 0
+          ? `4. 文件大小不超过 ${prefs.maxFileSizeMB}MB\n`
+          : "";
+      const pageHint =
+        prefs.maxPageCount > 0
+          ? `5. PDF 页数不超过 ${prefs.maxPageCount}页\n`
+          : "";
       ztoolkit.getGlobal("alert")(
         "未找到符合条件的 PDF 附件。\n" +
-        "请确保：\n" +
-        "1. 条目有 PDF 附件\n" +
-        modeHint +
-        "3. 文件名符合过滤规则\n" +
-        sizeHint +
-        pageHint,
+          "请确保：\n" +
+          "1. 条目有 PDF 附件\n" +
+          modeHint +
+          "3. 文件名符合过滤规则\n" +
+          sizeHint +
+          pageHint,
       );
       return;
     }
 
     // 避免重复：同一个 PDF 已在等待/运行队列中时，不重复添加
-    const uniqueTasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
-    const duplicateTasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
+    const uniqueTasks: Array<{
+      item: Zotero.Item;
+      attachment: AttachmentInfo;
+    }> = [];
+    const duplicateTasks: Array<{
+      item: Zotero.Item;
+      attachment: AttachmentInfo;
+    }> = [];
     const seenAttachmentIds = new Set<number>();
 
     for (const task of tasks) {
@@ -1960,7 +2060,7 @@ export class AISummaryModule {
       seenAttachmentIds.add(attachmentId);
 
       const alreadyActive = globalTaskQueue.hasActiveTask(
-        data => data.attachment.item.id === attachmentId,
+        (data) => data.attachment.item.id === attachmentId,
       );
       if (alreadyActive) {
         duplicateTasks.push(task);
@@ -1972,9 +2072,13 @@ export class AISummaryModule {
     if (duplicateTasks.length > 0) {
       const names = duplicateTasks
         .slice(0, 5)
-        .map(t => t.attachment.fileName || t.item.getDisplayTitle() || "未知文件")
+        .map(
+          (t) =>
+            t.attachment.fileName || t.item.getDisplayTitle() || "未知文件",
+        )
         .join("、");
-      const more = duplicateTasks.length > 5 ? ` 等 ${duplicateTasks.length} 个` : "";
+      const more =
+        duplicateTasks.length > 5 ? ` 等 ${duplicateTasks.length} 个` : "";
 
       const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
         .createLine({
@@ -2009,7 +2113,7 @@ export class AISummaryModule {
     }
 
     // 将任务提交到全局队列
-    const taskDataList: SummaryTaskData[] = uniqueTasks.map(task => ({
+    const taskDataList: SummaryTaskData[] = uniqueTasks.map((task) => ({
       item: task.item,
       attachment: task.attachment,
       prefs,

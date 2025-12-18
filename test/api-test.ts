@@ -19,7 +19,8 @@ const CONFIG = {
 };
 
 // 测试用的小 PDF（base64 编码的最小有效 PDF）
-const MINIMAL_PDF_BASE64 = "JVBERi0xLjQKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA0NAo+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvIFdvcmxkKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxNDcgMDAwMDAgbiAKMDAwMDAwMDIxNiAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDUKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjMwOQolJUVPRgo=";
+const MINIMAL_PDF_BASE64 =
+  "JVBERi0xLjQKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA0NAo+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvIFdvcmxkKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxNDcgMDAwMDAgbiAKMDAwMDAwMDIxNiAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDUKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjMwOQolJUVPRgo=";
 
 /**
  * 测试 1: 简单的 API 连接测试
@@ -160,7 +161,10 @@ async function testLongRequest(): Promise<void> {
 
   const timer = setInterval(() => {
     const elapsed = Math.round((Date.now() - startTime) / 1000);
-    if (checkpointIndex < checkpoints.length && elapsed >= checkpoints[checkpointIndex]) {
+    if (
+      checkpointIndex < checkpoints.length &&
+      elapsed >= checkpoints[checkpointIndex]
+    ) {
       console.log(`  ... ${elapsed} 秒，仍在等待响应 ...`);
       checkpointIndex++;
     }
@@ -261,7 +265,7 @@ async function main(): Promise<void> {
 
   if (CONFIG.apiKey === "YOUR_API_KEY_HERE") {
     console.log("\n⚠️  请先设置 API Key！");
-    console.log('编辑此文件，将 CONFIG.apiKey 替换为你的 API Key\n');
+    console.log("编辑此文件，将 CONFIG.apiKey 替换为你的 API Key\n");
     return;
   }
 

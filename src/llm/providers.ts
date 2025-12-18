@@ -37,7 +37,9 @@ function getApiKey(): string {
  * 通过 OpenAI 兼容接口调用 Gemini
  * 支持 x666.me 等代理服务
  */
-export async function summarize(opts: SummarizeOptions): Promise<SummarizeResult> {
+export async function summarize(
+  opts: SummarizeOptions,
+): Promise<SummarizeResult> {
   const { prefs, prompt } = opts;
   const url = `${prefs.apiBase.replace(/\/$/, "")}/chat/completions`;
 
@@ -93,9 +95,7 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
 
   const body = {
     model: prefs.model,
-    messages: [
-      { role: "user", content: "请直接回复：pong" },
-    ],
+    messages: [{ role: "user", content: "请直接回复：pong" }],
     temperature: 0.1,
     max_tokens: 10,
   };
@@ -183,7 +183,9 @@ export async function summarizeWithRemotePdf(
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`远端 PDF 解析失败: ${res.status} ${errorText.substring(0, 500)}`);
+    throw new Error(
+      `远端 PDF 解析失败: ${res.status} ${errorText.substring(0, 500)}`,
+    );
   }
 
   // 解析 SSE 流式响应
@@ -226,7 +228,9 @@ async function parseSSEResponse(
   };
 
   // 使用 ReadableStream 进行真正的流式读取
-  const reader = res.body?.getReader() as ReadableStreamDefaultReader<Uint8Array> | undefined;
+  const reader = res.body?.getReader() as
+    | ReadableStreamDefaultReader<Uint8Array>
+    | undefined;
   if (!reader) {
     // 降级到一次性读取
     const text = await res.text();

@@ -12,5 +12,15 @@ export default zotero({
         "@typescript-eslint/no-unused-vars": "off",
       },
     },
+    {
+      // These scripts are meant to be executed in Zotero (Run JavaScript) or as ad-hoc Node scripts.
+      // They use globals like Zotero/prompt/alert/fetch/console and may intentionally use empty catches.
+      files: ["test/**/*.js"],
+      rules: {
+        "no-undef": "off",
+        "no-unused-vars": "off",
+        "no-empty": "off",
+      },
+    },
   ],
 });

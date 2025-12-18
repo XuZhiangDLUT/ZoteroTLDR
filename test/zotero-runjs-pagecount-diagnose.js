@@ -17,7 +17,10 @@
   }
 
   // 让你输入 maxPageCount，用来模拟插件中的页数限制逻辑
-  const input = prompt("请输入测试用的 maxPageCount（页数上限，0 表示不限制）", "50");
+  const input = prompt(
+    "请输入测试用的 maxPageCount（页数上限，0 表示不限制）",
+    "50",
+  );
   const MAX_PAGE_COUNT = parseInt(input, 10);
   if (isNaN(MAX_PAGE_COUNT) || MAX_PAGE_COUNT < 0) {
     alert("maxPageCount 输入无效");
@@ -27,7 +30,9 @@
   const withTimeout = (promise, ms, label) =>
     Promise.race([
       promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error(label + " 超时")), ms)),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(label + " 超时")), ms),
+      ),
     ]);
 
   // Zotero.File.getBinaryContentsAsync(filePath) 返回“二进制字符串”
@@ -53,7 +58,11 @@
         enableXfa: false,
       });
 
-      const pdf = await withTimeout(loadingTask.promise, 10000, "pdf.js getDocument");
+      const pdf = await withTimeout(
+        loadingTask.promise,
+        10000,
+        "pdf.js getDocument",
+      );
       const pages = pdf.numPages;
       pdf.destroy();
       return { pages, ok: typeof pages === "number", error: null };
@@ -66,7 +75,8 @@
     try {
       const content = await Zotero.File.getBinaryContentsAsync(filePath);
       const matches = content.match(/\/Count\s+(\d+)/g);
-      if (!matches || !matches.length) return { pages: null, ok: false, error: "未匹配到 /Count N" };
+      if (!matches || !matches.length)
+        return { pages: null, ok: false, error: "未匹配到 /Count N" };
 
       let maxCount = 0;
       for (const m of matches) {
@@ -82,16 +92,18 @@
   }
 
   async function dbQuery(sql, params) {
-    if (Zotero.DB && typeof Zotero.DB.queryAsync === "function") return Zotero.DB.queryAsync(sql, params);
-    if (Zotero.DB && typeof Zotero.DB.query === "function") return Zotero.DB.query(sql, params);
+    if (Zotero.DB && typeof Zotero.DB.queryAsync === "function")
+      return Zotero.DB.queryAsync(sql, params);
+    if (Zotero.DB && typeof Zotero.DB.query === "function")
+      return Zotero.DB.query(sql, params);
     throw new Error("Zotero.DB.queryAsync/query 不可用");
   }
 
   async function getPageCols(tableName) {
     try {
       const info = await dbQuery(`PRAGMA table_info(${tableName})`);
-      const cols = info.map(r => r.name).filter(Boolean);
-      return cols.filter(c => String(c).toLowerCase().includes("page"));
+      const cols = info.map((r) => r.name).filter(Boolean);
+      return cols.filter((c) => String(c).toLowerCase().includes("page"));
     } catch (_e) {
       return [];
     }
@@ -100,7 +112,10 @@
   async function getPageColsRow(tableName, itemID, pageCols) {
     if (!pageCols.length) return null;
     const cols = ["itemID"].concat(pageCols);
-    const rows = await dbQuery(`SELECT ${cols.join(", ")} FROM ${tableName} WHERE itemID = ?`, [itemID]);
+    const rows = await dbQuery(
+      `SELECT ${cols.join(", ")} FROM ${tableName} WHERE itemID = ?`,
+      [itemID],
+    );
     if (!rows || !rows.length) return null;
 
     const row = rows[0];
@@ -133,7 +148,8 @@
         "";
       if (!String(contentType).includes("application/pdf")) continue;
 
-      const getFilePath = att.getFilePath || (att._getFilePath && att._getFilePath.bind(att));
+      const getFilePath =
+        att.getFilePath || (att._getFilePath && att._getFilePath.bind(att));
       const filePath = getFilePath ? getFilePath.call(att) : "";
       if (!filePath) continue;
 
@@ -162,14 +178,24 @@
 
     let ftRow = null;
     let iaRow = null;
-    try { ftRow = await getPageColsRow("fulltextItems", id, fulltextPageCols); } catch (_e) {}
-    try { iaRow = await getPageColsRow("itemAttachments", id, attachPageCols); } catch (_e) {}
+    try {
+      ftRow = await getPageColsRow("fulltextItems", id, fulltextPageCols);
+    } catch (_e) {}
+    try {
+      iaRow = await getPageColsRow("itemAttachments", id, attachPageCols);
+    } catch (_e) {}
 
     const ftStr = ftRow
-      ? Object.entries(ftRow).filter(([k]) => k !== "itemID").map(([k, v]) => `${k}=${v}`).join(" ")
+      ? Object.entries(ftRow)
+          .filter(([k]) => k !== "itemID")
+          .map(([k, v]) => `${k}=${v}`)
+          .join(" ")
       : "";
     const iaStr = iaRow
-      ? Object.entries(iaRow).filter(([k]) => k !== "itemID").map(([k, v]) => `${k}=${v}`).join(" ")
+      ? Object.entries(iaRow)
+          .filter(([k]) => k !== "itemID")
+          .map(([k, v]) => `${k}=${v}`)
+          .join(" ")
       : "";
 
     const dbTotalPages = toPositiveInt(ftRow && ftRow.totalPages);
@@ -232,6 +258,8 @@
   console.log("=== 页数诊断结果 ===");
   console.table(results);
 
-  alert("完成：请打开 Tools > Developer > Error Console 查看 console.table（把无法获取页数的那几行贴给我）");
+  alert(
+    "完成：请打开 Tools > Developer > Error Console 查看 console.table（把无法获取页数的那几行贴给我）",
+  );
   return results;
 })();

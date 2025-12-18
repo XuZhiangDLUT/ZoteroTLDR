@@ -53,11 +53,9 @@ export interface AddonPrefs {
  * 获取所有偏好设置，带默认值
  */
 export function getPrefs(): AddonPrefs {
-  const apiBase =
-    ((getPref("apiBase" as any) as string) || "https://x666.me/v1").replace(
-      /\/$/,
-      "",
-    );
+  const apiBase = (
+    (getPref("apiBase" as any) as string) || "https://x666.me/v1"
+  ).replace(/\/$/, "");
 
   const model = (getPref("model" as any) as string) || "gemini-2.5-pro-1m";
 
@@ -82,12 +80,17 @@ export function getPrefs(): AddonPrefs {
       : Number(thinkingBudgetPref ?? -1) || -1;
 
   const concurrencyPref = getPref("concurrency" as any);
-  const concurrency = Math.max(1, Math.min(10, Number(concurrencyPref ?? 1) || 1));
+  const concurrency = Math.max(
+    1,
+    Math.min(10, Number(concurrencyPref ?? 1) || 1),
+  );
 
   const maxCharsPref = getPref("maxChars" as any);
   const maxChars = Number(maxCharsPref ?? 800000) || 800000;
 
-  const attachmentFilter = ((getPref("attachmentFilter" as any) as string) || "").trim();
+  const attachmentFilter = (
+    (getPref("attachmentFilter" as any) as string) || ""
+  ).trim();
 
   const maxFileSizeMBPref = getPref("maxFileSizeMB" as any);
   const maxFileSizeMB = Math.max(0, Number(maxFileSizeMBPref ?? 25) || 0);
@@ -95,7 +98,9 @@ export function getPrefs(): AddonPrefs {
   const maxPageCountPref = getPref("maxPageCount" as any);
   const maxPageCount = Math.max(0, Number(maxPageCountPref ?? 50) || 0);
 
-  const skipExistingSummary = Boolean(getPref("skipExistingSummary" as any) ?? true);
+  const skipExistingSummary = Boolean(
+    getPref("skipExistingSummary" as any) ?? true,
+  );
 
   const retryOn524Pref = getPref("retryOn524" as any);
   const retryOn524 = Math.max(0, Number(retryOn524Pref ?? 2) || 0);
@@ -104,12 +109,17 @@ export function getPrefs(): AddonPrefs {
   const rateLimitCount = Math.max(1, Number(rateLimitCountPref ?? 20) || 20);
 
   const rateLimitWindowMinutesPref = getPref("rateLimitWindowMinutes" as any);
-  const rateLimitWindowMinutes = Math.max(1, Number(rateLimitWindowMinutesPref ?? 5) || 5);
+  const rateLimitWindowMinutes = Math.max(
+    1,
+    Number(rateLimitWindowMinutesPref ?? 5) || 5,
+  );
 
   const prompt = (getPref("prompt" as any) as string) || "";
 
-  const pdfParseModeRaw = (getPref("pdfParseMode" as any) as string) || "remote";
-  const pdfParseMode: PdfParseMode = pdfParseModeRaw === "local" ? "local" : "remote";
+  const pdfParseModeRaw =
+    (getPref("pdfParseMode" as any) as string) || "remote";
+  const pdfParseMode: PdfParseMode =
+    pdfParseModeRaw === "local" ? "local" : "remote";
 
   return {
     apiBase,
