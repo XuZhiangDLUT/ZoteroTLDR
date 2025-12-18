@@ -11,8 +11,6 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,8 +26,6 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
