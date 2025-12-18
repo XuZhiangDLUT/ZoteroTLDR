@@ -1107,6 +1107,7 @@ class TaskQueuePanel {
   private eventListener: (() => void) | null = null;
   private expandedThoughtTasks: Set<number> = new Set(); // 跟踪展开“思考过程”的任务 ID
   private expandedOutputTasks: Set<number> = new Set(); // 跟踪展开“输出”的任务 ID
+  private expandedErrorTasks: Set<number> = new Set(); // 跟踪展开“错误”的任务 ID
 
   /**
    * 打开或聚焦面板
@@ -1460,6 +1461,24 @@ class TaskQueuePanel {
             }
             this.updateContent();
           }
+          return;
+        }
+
+        // 展开/收起错误
+        const errorToggle = target.closest(
+          "[data-toggle-error]",
+        ) as HTMLElement;
+        if (errorToggle) {
+          const taskId = parseInt(errorToggle.dataset.toggleError || "0", 10);
+          if (taskId) {
+            if (this.expandedErrorTasks.has(taskId)) {
+              this.expandedErrorTasks.delete(taskId);
+            } else {
+              this.expandedErrorTasks.add(taskId);
+            }
+            this.updateContent();
+          }
+          return;
         }
       });
     }
@@ -1504,9 +1523,16 @@ class TaskQueuePanel {
       const timeInfo = this.getTimeInfo(task);
       const hasThought = task.thoughtOutput.length > 0;
       const hasOutput = task.output.length > 0;
+      const hasError = Boolean(task.error);
       const isThoughtExpanded = this.expandedThoughtTasks.has(task.id);
       const isOutputExpanded = this.expandedOutputTasks.has(task.id);
+      const isErrorExpanded = this.expandedErrorTasks.has(task.id);
       const isRunning = task.status === "running";
+      const errorInline =
+        hasError && task.error
+          ? task.error.replace(/\s+/g, " ").trim().slice(0, 160) +
+            (task.error.replace(/\s+/g, " ").trim().length > 160 ? "…" : "")
+          : "";
 
       // 任务主体
       html += `
@@ -1532,7 +1558,7 @@ class TaskQueuePanel {
               flex-shrink: 0;
               ${isRunning ? "animation: pulse 1s infinite;" : ""}
             "></span>
-            <div style="flex: 1; min-width: 0; max-width: 280px; overflow: hidden;">
+            <div style="flex: 1; min-width: 0; overflow: hidden;">
               <div style="
                 white-space: nowrap;
                 overflow: hidden;
@@ -1545,8 +1571,9 @@ class TaskQueuePanel {
                 ${statusInfo.text}${timeInfo}
                 ${hasThought ? ` · <span data-toggle-thought="${task.id}" style="color: #7c4dff; cursor: pointer;">${isThoughtExpanded ? "▼ 收起思考" : "▶ 展开思考"}</span>` : ""}
                 ${hasOutput ? ` · <span data-toggle-output="${task.id}" style="color: #1976d2; cursor: pointer;">${isOutputExpanded ? "▼ 收起输出" : "▶ 展开输出"}</span>` : ""}
-                ${task.error ? ` - <span style="color: #c62828;">${this.escapeHtml(task.error.substring(0, 50))}${task.error.length > 50 ? "..." : ""}</span>` : ""}
+                ${hasError ? ` · <span data-toggle-error="${task.id}" style="color: #c62828; cursor: pointer;">${isErrorExpanded ? "▼ 收起错误" : "▶ 展开错误"}</span>` : ""}
               </div>
+              ${hasError ? `<div style="font-size: 11px; color: #c62828; margin-top: 2px; white-space: normal; word-break: break-word;">${this.escapeHtml(errorInline)}</div>` : ""}
             </div>
             ${
               task.status === "pending"
@@ -1565,7 +1592,7 @@ class TaskQueuePanel {
                 : ""
             }
           </div>
-          ${this.renderTaskDetails(task, isThoughtExpanded, isOutputExpanded, isRunning)}
+          ${this.renderTaskDetails(task, isThoughtExpanded, isOutputExpanded, isErrorExpanded, isRunning)}
         </div>
       `;
     }
@@ -1634,16 +1661,19 @@ class TaskQueuePanel {
     task: TaskInfo,
     isThoughtExpanded: boolean,
     isOutputExpanded: boolean,
+    isErrorExpanded: boolean,
     isRunning: boolean,
   ): string {
     const thoughtOutput = task.thoughtOutput || "";
     const output = task.output || "";
+    const errorText = task.error || "";
 
     const showThought =
       thoughtOutput.length > 0 && (isRunning || isThoughtExpanded);
     const showOutput = output.length > 0 && (isRunning || isOutputExpanded);
+    const showError = errorText.length > 0 && isErrorExpanded;
 
-    if (!showThought && !showOutput) return "";
+    if (!showThought && !showOutput && !showError) return "";
 
     const bg = isRunning ? "#f8f9fa" : "#fafafa";
     let html = "";
@@ -1689,6 +1719,25 @@ class TaskQueuePanel {
             border-left: 3px solid ${isRunning ? "#2196f3" : "#ddd"};
           "
         >${this.escapeHtml(preview)}</div>
+      `;
+    }
+
+    if (showError) {
+      html += `
+        <div
+          id="error-${task.id}"
+          class="output-preview output-expanded"
+          style="
+            margin: 0 12px 8px 30px;
+            padding: 8px;
+            background-color: #fff5f5;
+            border-radius: 4px;
+            border-left: 3px solid #c62828;
+          "
+        >
+          <div style="color: #c62828; margin-bottom: 4px;"><b>[错误信息]</b></div>
+          <div style="color: #8e0000;">${this.escapeHtml(errorText)}</div>
+        </div>
       `;
     }
 
@@ -1782,7 +1831,8 @@ class TaskQueuePanel {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   /**
