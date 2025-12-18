@@ -904,6 +904,14 @@ async function summarizeWithRemotePdfWithRetry(
   const { prefs, onStreamChunk, ...restOpts } = opts;
   const maxRetries = prefs.retryOn524;
   let lastError: Error | null = null;
+  const isTransientStreamError = (msg: string): boolean => {
+    const lowered = msg.toLowerCase();
+    return (
+      lowered.includes("error in input stream") ||
+      lowered.includes("network error") ||
+      lowered.includes("econnreset")
+    );
+  };
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -915,16 +923,23 @@ async function summarizeWithRemotePdfWithRetry(
     } catch (e: any) {
       const errorMsg = e?.message || String(e);
 
-      // 如果是 524 错误且还有重试次数
-      if (errorMsg.includes("524") && attempt < maxRetries) {
+      const shouldRetry =
+        errorMsg.includes("524") || isTransientStreamError(errorMsg);
+
+      // 如果是 524 或常见流错误且还有重试次数
+      if (shouldRetry && attempt < maxRetries) {
         const retryNum = attempt + 1;
+        const delayMs = Math.min(10000, 2000 * 2 ** attempt); // 指数退避，封顶 10s
+        const reasonText = errorMsg.includes("524")
+          ? "524 超时错误"
+          : "流式连接中断 (input stream/network)";
         onStreamChunk?.(
-          `\n[524 超时错误，正在进行第 ${retryNum}/${maxRetries} 次重试...]\n`,
+          `\n[${reasonText}，正在进行第 ${retryNum}/${maxRetries} 次重试，等待 ${Math.round(delayMs / 1000)}s...]\n`,
           false,
         );
         lastError = e;
         // 等待一小段时间后重试
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
       }
 
