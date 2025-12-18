@@ -83,6 +83,121 @@ npm run build
 
 输出：`.scaffold/build/hanchens-zotero-tldr.xpi`
 
+## 发布流程
+
+### 前提条件
+
+- 确保所有改动已提交且测试通过
+- 清理不必要的构建产物
+- 根据需要更新 `package.json` 中的版本号
+
+### 发布 Beta 版本
+
+Beta 版本用于预发布测试和早期反馈。
+
+```bash
+# 1. 更新版本号为 beta（如果还没更新）
+# 编辑 package.json: "version": "0.2.2-beta.1"
+
+# 2. 清理并暂存必要的改动
+git status
+git add package.json package-lock.json src/
+# 如有需要，删除构建产物
+rm -rf release-*/
+
+# 3. 提交改动
+git commit -m "feat: 功能描述
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+# 4. 构建插件
+npm run build
+
+# 5. 创建并推送 git tag
+git tag v0.2.2-beta.1
+git push origin main
+git push origin v0.2.2-beta.1
+
+# GitHub Actions 将自动：
+# - 构建项目
+# - 创建 GitHub Release（标记为预发布）
+# - 上传 .xpi 文件
+```
+
+### 发布正式版本
+
+用于生产环境的稳定版本发布。
+
+```bash
+# 1. 更新版本号为正式版
+# 编辑 package.json: "version": "0.2.2"
+
+# 2. 清理并暂存改动
+git status
+git add package.json package-lock.json src/
+rm -rf release-*/
+
+# 3. 提交改动
+git commit -m "chore(release): v0.2.2
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+# 4. 构建插件
+npm run build
+
+# 5. 创建并推送 git tag（不带 -beta 后缀）
+git tag v0.2.2
+git push origin main
+git push origin v0.2.2
+
+# GitHub Actions 将自动：
+# - 构建项目
+# - 创建 GitHub Release（稳定版）
+# - 上传 .xpi 文件
+```
+
+### 手动发布（不使用 GitHub Actions）
+
+如果需要手动发布：
+
+```bash
+# 1. 确保 package.json 中的版本号已更新
+# 2. 构建并创建 tag
+npm run build
+git tag v0.2.2-beta.1
+
+# 3. 手动创建 release
+npm run release
+
+# 或通过 GitHub 网页界面创建 release：
+# - 访问：https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/new
+# - 选择 tag：v0.2.2-beta.1
+# - 上传文件：.scaffold/build/hanchens-zotero-tldr.xpi
+# - Beta 版本勾选"Set as a pre-release"
+```
+
+### 版本命名规范
+
+- **Beta/预发布版**：`0.2.2-beta.1`、`0.2.2-beta.2` 等
+- **正式版**：`0.2.2`、`0.3.0`、`1.0.0` 等
+- **候选版本**：`0.2.2-rc.1`（可选）
+
+### 自动发布工作流
+
+项目使用 GitHub Actions（`.github/workflows/release.yml`），在推送任何 `v*` 格式的 tag 时触发：
+
+1. 检出代码并安装依赖
+2. 运行 `npm run build`
+3. 运行 `npm run release` 创建 GitHub Release
+4. 自动上传 `.xpi` 文件
+5. 在相关 issue/PR 上添加发布通知
+
+查看发布状态：https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
+
 ## 常见问题
 
 - **没有菜单？** 重启 Zotero，确保插件已启用
