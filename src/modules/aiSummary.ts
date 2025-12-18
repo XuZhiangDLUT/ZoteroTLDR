@@ -1280,8 +1280,8 @@ class TaskQueuePanel {
 
     // 打开对话框
     this.dialog.open("AI 摘要任务队列", {
-      width: 420,
-      height: 500,
+      width: 600,
+      height: 550,
       centerscreen: true,
       resizable: true,
       noDialogMode: true,
@@ -1558,16 +1558,17 @@ class TaskQueuePanel {
               flex-shrink: 0;
               ${isRunning ? "animation: pulse 1s infinite;" : ""}
             "></span>
-            <div style="flex: 1; min-width: 0; overflow: hidden;">
+            <div style="flex: 1; min-width: 0; overflow: hidden; max-width: 480px;">
               <div style="
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 font-weight: ${isRunning ? "bold" : "normal"};
+                max-width: 100%;
               " title="${this.escapeHtml(task.displayName)}">
                 ${this.escapeHtml(task.displayName)}
               </div>
-              <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
                 ${statusInfo.text}${timeInfo}
                 ${hasThought ? ` · <span data-toggle-thought="${task.id}" style="color: #7c4dff; cursor: pointer;">${isThoughtExpanded ? "▼ 收起思考" : "▶ 展开思考"}</span>` : ""}
                 ${hasOutput ? ` · <span data-toggle-output="${task.id}" style="color: #1976d2; cursor: pointer;">${isOutputExpanded ? "▼ 收起输出" : "▶ 展开输出"}</span>` : ""}
