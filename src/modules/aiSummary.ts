@@ -103,6 +103,7 @@ function isTransientErrorMessage(msg: string): boolean {
   return (
     lowered.includes("error in input stream") ||
     lowered.includes("network error") ||
+    lowered.includes("networkerror when attempting to fetch resource") ||
     lowered.includes("econnreset") ||
     lowered.includes("timeout") ||
     lowered.includes("timed out") ||
