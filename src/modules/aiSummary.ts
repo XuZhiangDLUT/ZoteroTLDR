@@ -224,6 +224,20 @@ class GlobalTaskQueue<T> {
   }
 
   /**
+   * 是否存在“等待中/运行中”的任务满足条件
+   * 用于避免重复提交同一个任务（例如同一 PDF 被重复右键触发）
+   */
+  hasActiveTask(match: (data: T) => boolean): boolean {
+    for (const task of this.queue) {
+      if (task.status === "pending" && match(task.data)) return true;
+    }
+    for (const task of this.runningTasks.values()) {
+      if (task.status === "running" && match(task.data)) return true;
+    }
+    return false;
+  }
+
+  /**
    * 更新并发数
    */
   setConcurrency(n: number): void {
@@ -1935,17 +1949,59 @@ export class AISummaryModule {
       return;
     }
 
+    // 避免重复：同一个 PDF 已在等待/运行队列中时，不重复添加
+    const uniqueTasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
+    const duplicateTasks: Array<{ item: Zotero.Item; attachment: AttachmentInfo }> = [];
+    const seenAttachmentIds = new Set<number>();
+
+    for (const task of tasks) {
+      const attachmentId = task.attachment.item.id;
+      if (seenAttachmentIds.has(attachmentId)) continue;
+      seenAttachmentIds.add(attachmentId);
+
+      const alreadyActive = globalTaskQueue.hasActiveTask(
+        data => data.attachment.item.id === attachmentId,
+      );
+      if (alreadyActive) {
+        duplicateTasks.push(task);
+      } else {
+        uniqueTasks.push(task);
+      }
+    }
+
+    if (duplicateTasks.length > 0) {
+      const names = duplicateTasks
+        .slice(0, 5)
+        .map(t => t.attachment.fileName || t.item.getDisplayTitle() || "未知文件")
+        .join("、");
+      const more = duplicateTasks.length > 5 ? ` 等 ${duplicateTasks.length} 个` : "";
+
+      const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
+        .createLine({
+          text: `已在队列中：${names}${more}（已忽略重复添加）`,
+          type: "default",
+        })
+        .show();
+      pw.startCloseTimer(3500);
+    }
+
+    if (!uniqueTasks.length) {
+      // 全部都是重复任务：直接打开队列面板，方便用户查看进度
+      AISummaryModule.openTaskQueuePanel();
+      return;
+    }
+
     // 更新全局队列的并发数
     globalTaskQueue.setConcurrency(prefs.concurrency);
 
     // 显示队列状态
     const currentStatus = globalTaskQueue.getStatus();
-    const totalPending = currentStatus.queued + tasks.length;
+    const totalPending = currentStatus.queued + uniqueTasks.length;
     if (currentStatus.running > 0 || currentStatus.queued > 0) {
       // 已有任务在运行，显示提示
       const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
         .createLine({
-          text: `已添加 ${tasks.length} 个任务到队列 (当前队列: ${totalPending} 待处理, ${currentStatus.running} 运行中)`,
+          text: `已添加 ${uniqueTasks.length} 个任务到队列 (当前队列: ${totalPending} 待处理, ${currentStatus.running} 运行中)`,
           progress: 100,
         })
         .show();
@@ -1953,7 +2009,7 @@ export class AISummaryModule {
     }
 
     // 将任务提交到全局队列
-    const taskDataList: SummaryTaskData[] = tasks.map(task => ({
+    const taskDataList: SummaryTaskData[] = uniqueTasks.map(task => ({
       item: task.item,
       attachment: task.attachment,
       prefs,
