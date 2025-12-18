@@ -24,7 +24,7 @@ pref-max-file-size-help = MB (0=no limit)
 pref-max-pages = Max Pages:
 pref-no-limit-help = (0=no limit)
 pref-skip-existing-summary = Skip Summarized:
-pref-retry-on-524 = Retry on 524:
+pref-retry-transient = Retry on transient errors:
 pref-times = times
 pref-prompt = Prompt Template:
 pref-api-test = Test API

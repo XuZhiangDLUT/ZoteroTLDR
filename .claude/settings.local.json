@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat(ui): add expandable error display in task queue panel\n\n- Add error message expand/collapse functionality in TaskQueuePanel\n- Display inline error preview (max 160 chars) for quick overview\n- Support full error details expansion with dedicated styling\n- Update version to 0.2.2-beta.1\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run release:*)",
+      "Bash(git tag:*)",
+      "Bash(npm run build:*)",
+      "Bash(git push:*)",
+      "Bash(gh release create:*)",
+      "Bash(gh release:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

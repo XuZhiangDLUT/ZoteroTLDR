@@ -307,7 +307,7 @@ When using an OpenAI-compatible proxy (e.g. Cloudflare) for long remote PDF pars
    - Split streamed chunks into normal output vs thought output (`isThought=true/false`), and show them separately in the Task Queue Panel (`src/modules/aiSummary.ts`)
    - Open the panel via context menu: **“查看 AI 任务队列”** (supports expand/collapse + auto-scroll for running tasks)
 
-Extra: there is also a configurable `retryOn524` for quick retries on occasional 524s, but streaming is the primary fix.
+Extra: there is also a configurable `retryOnTransientErrors` to retry occasional 524/stream/timeout hiccups, but streaming is the primary fix.
 
 ## License
 

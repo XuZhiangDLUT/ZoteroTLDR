@@ -23,7 +23,7 @@ pref("maxPageCount", 50); // 超过此页数的文件跳过，0=不限制
 pref("skipExistingSummary", true); // 跳过已有 AI 摘要的 PDF
 
 // 错误重试
-pref("retryOn524", 2); // 524 错误重试次数，0=不重试
+pref("retryOnTransientErrors", 2); // 瞬态错误重试次数（含 524/流错误/超时），0=不重试
 
 // 速率限制
 pref("rateLimitCount", 20); // 时间窗口内最大请求数

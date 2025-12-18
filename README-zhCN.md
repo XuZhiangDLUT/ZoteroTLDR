@@ -307,7 +307,7 @@ async function onStartup() {
    - 将 `thought` 与正文输出分流（`isThought=true/false`），在任务队列面板中分区显示（`src/modules/aiSummary.ts`）
    - 通过右键菜单 **“查看 AI 任务队列”** 打开面板（支持展开/收起与运行中自动滚动）
 
-补充：`retryOn524` 可配置在偶发 524 时自动快速重试，但“流式接口”是主要解决方案。
+补充：`retryOnTransientErrors` 可配置在偶发 524/流错误/超时时自动快速重试，但“流式接口”仍是主要解决方案。
 
 ## 许可证
 

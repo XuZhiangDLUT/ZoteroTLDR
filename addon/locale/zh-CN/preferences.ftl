@@ -24,7 +24,7 @@ pref-max-file-size-help = MB（0=不限）
 pref-max-pages = 最大页数：
 pref-no-limit-help = （0=不限）
 pref-skip-existing-summary = 跳过已生成摘要：
-pref-retry-on-524 = 遇到 524 重试：
+pref-retry-transient = 瞬态错误重试（含超时/流错误）：
 pref-times = 次
 pref-prompt = 提示词模板：
 pref-api-test = 测试 API

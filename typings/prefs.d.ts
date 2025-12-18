@@ -21,7 +21,7 @@ declare namespace _ZoteroTypes {
       "maxFileSizeMB": number;
       "maxPageCount": number;
       "skipExistingSummary": boolean;
-      "retryOn524": number;
+      "retryOnTransientErrors": number;
       "rateLimitCount": number;
       "rateLimitWindowMinutes": number;
       "prompt": string;

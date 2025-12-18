@@ -42,7 +42,7 @@ export interface AddonPrefs {
   maxFileSizeMB: number;
   maxPageCount: number;
   skipExistingSummary: boolean;
-  retryOn524: number;
+  retryOnTransientErrors: number;
   rateLimitCount: number;
   rateLimitWindowMinutes: number;
   prompt: string;
@@ -102,8 +102,12 @@ export function getPrefs(): AddonPrefs {
     getPref("skipExistingSummary" as any) ?? true,
   );
 
-  const retryOn524Pref = getPref("retryOn524" as any);
-  const retryOn524 = Math.max(0, Number(retryOn524Pref ?? 2) || 0);
+  // 统一的瞬态错误重试次数，兼容旧的 retryOn524
+  const retryTransientPref =
+    getPref("retryOnTransientErrors" as any) ??
+    getPref("retryOn524" as any) ??
+    2;
+  const retryOnTransientErrors = Math.max(0, Number(retryTransientPref) || 0);
 
   const rateLimitCountPref = getPref("rateLimitCount" as any);
   const rateLimitCount = Math.max(1, Number(rateLimitCountPref ?? 20) || 20);
@@ -134,7 +138,7 @@ export function getPrefs(): AddonPrefs {
     maxFileSizeMB,
     maxPageCount,
     skipExistingSummary,
-    retryOn524,
+    retryOnTransientErrors,
     rateLimitCount,
     rateLimitWindowMinutes,
     prompt,

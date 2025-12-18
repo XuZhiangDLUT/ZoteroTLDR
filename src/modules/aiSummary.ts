@@ -902,14 +902,15 @@ async function summarizeWithRemotePdfWithRetry(
   opts: Parameters<typeof summarizeWithRemotePdf>[0] & { prefs: AddonPrefs },
 ): Promise<SummarizeResult> {
   const { prefs, onStreamChunk, ...restOpts } = opts;
-  const maxRetries = prefs.retryOn524;
+  const maxRetries = prefs.retryOnTransientErrors;
   let lastError: Error | null = null;
   const isTransientStreamError = (msg: string): boolean => {
     const lowered = msg.toLowerCase();
     return (
       lowered.includes("error in input stream") ||
       lowered.includes("network error") ||
-      lowered.includes("econnreset")
+      lowered.includes("econnreset") ||
+      lowered.includes("timeout")
     );
   };
 
@@ -932,7 +933,7 @@ async function summarizeWithRemotePdfWithRetry(
         const delayMs = Math.min(10000, 2000 * 2 ** attempt); // 指数退避，封顶 10s
         const reasonText = errorMsg.includes("524")
           ? "524 超时错误"
-          : "流式连接中断 (input stream/network)";
+          : "流式连接中断/超时 (input stream/network)";
         onStreamChunk?.(
           `\n[${reasonText}，正在进行第 ${retryNum}/${maxRetries} 次重试，等待 ${Math.round(delayMs / 1000)}s...]\n`,
           false,

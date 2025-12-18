@@ -39,7 +39,7 @@ export type FluentMessageId =
   | 'pref-rate-limit-minutes'
   | 'pref-rate-limit-per'
   | 'pref-rate-limit-window'
-  | 'pref-retry-on-524'
+  | 'pref-retry-transient'
   | 'pref-skip-existing-summary'
   | 'pref-temperature'
   | 'pref-thinking-budget'
