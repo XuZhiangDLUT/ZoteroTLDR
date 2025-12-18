@@ -107,7 +107,7 @@ class GlobalTaskQueue<T> {
   private worker: ((task: T, taskId: number) => Promise<void>) | null = null;
   private displayNameExtractor: DisplayNameExtractor<T> = () => "任务";
   private eventListeners: Set<QueueEventListener> = new Set();
-  private maxCompletedHistory = 50; // 最多保留的已完成任务历史
+  private maxCompletedHistory = 1000; // 最多保留的已完成任务历史
 
   /**
    * 设置显示名称提取函数
@@ -409,6 +409,24 @@ const globalTaskQueue = new GlobalTaskQueue<SummaryTaskData>();
 function markdownToHTML(md: string): string {
   if (!md) return "<p>(无内容)</p>";
   return marked.parse(md) as string;
+}
+
+/**
+ * 安全关闭进度窗计时器，避免窗口已被销毁时抛出 NS_ERROR_NOT_INITIALIZED
+ */
+function safeStartCloseTimer(pw: any, delayMs: number): void {
+  try {
+    if (!pw || typeof pw.startCloseTimer !== "function") return;
+    const win = (pw as any).win || (pw as any).window;
+    if (win && win.closed) return;
+    pw.startCloseTimer(delayMs);
+  } catch (e) {
+    try {
+      ztoolkit.log("safeStartCloseTimer error", e);
+    } catch (_ignored) {
+      // ignore logging errors
+    }
+  }
 }
 
 /**
@@ -1085,7 +1103,7 @@ async function executeSummaryTask(
     });
     throw e; // 重新抛出以便调用方知道失败
   } finally {
-    pw.startCloseTimer(2000);
+    safeStartCloseTimer(pw, 2000);
   }
 }
 
@@ -2063,7 +2081,7 @@ export class AISummaryModule {
           type: "default",
         })
         .show();
-      pw.startCloseTimer(5000);
+      safeStartCloseTimer(pw, 5000);
 
       // 在控制台输出详细信息
       ztoolkit.log(`跳过的文件:\n${skippedInfo}${moreInfo}`);
@@ -2137,7 +2155,7 @@ export class AISummaryModule {
           type: "default",
         })
         .show();
-      pw.startCloseTimer(3500);
+      safeStartCloseTimer(pw, 3500);
     }
 
     if (!uniqueTasks.length) {
@@ -2160,7 +2178,7 @@ export class AISummaryModule {
           progress: 100,
         })
         .show();
-      pw.startCloseTimer(3000);
+      safeStartCloseTimer(pw, 3000);
     }
 
     // 将任务提交到全局队列
