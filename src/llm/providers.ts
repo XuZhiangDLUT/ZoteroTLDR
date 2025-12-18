@@ -166,6 +166,8 @@ export async function summarizeWithRemotePdf(
   if (prefs.enableThoughts) {
     (body.generationConfig as Record<string, unknown>).thinkingConfig = {
       thinkingBudget: prefs.thinkingBudget ?? -1,
+      // 在部分代理/兼容层中，需要显式开启才会返回 thought 字段
+      includeThoughts: true,
     };
   }
 
@@ -198,6 +200,30 @@ async function parseSSEResponse(
 ): Promise<SummarizeResult> {
   let markdown = "";
   let thoughtsMarkdown = "";
+
+  const extractChunk = (part: any): string => {
+    if (typeof part?.text === "string" && part.text) return part.text;
+    if (typeof part?.thought === "string" && part.thought) return part.thought;
+    if (
+      part?.thought &&
+      typeof part.thought === "object" &&
+      typeof part.thought.text === "string" &&
+      part.thought.text
+    ) {
+      return part.thought.text;
+    }
+    return "";
+  };
+
+  const isThoughtPart = (part: any): boolean => {
+    return (
+      part?.thought === true ||
+      typeof part?.thought === "string" ||
+      (part?.thought &&
+        typeof part.thought === "object" &&
+        typeof part.thought.text === "string")
+    );
+  };
 
   // 使用 ReadableStream 进行真正的流式读取
   const reader = res.body?.getReader() as ReadableStreamDefaultReader<Uint8Array> | undefined;
@@ -236,7 +262,7 @@ async function parseSSEResponse(
                 content?: {
                   parts?: Array<{
                     text?: string;
-                    thought?: boolean;
+                    thought?: unknown;
                   }>;
                 };
               }>;
@@ -245,12 +271,14 @@ async function parseSSEResponse(
             // 解析每个响应片段
             if (data.candidates?.[0]?.content?.parts) {
               for (const part of data.candidates[0].content.parts) {
-                if (part.thought && part.text) {
-                  thoughtsMarkdown += part.text;
-                  onStreamChunk?.(part.text, true);
-                } else if (part.text) {
-                  markdown += part.text;
-                  onStreamChunk?.(part.text, false);
+                const chunk = extractChunk(part);
+                if (!chunk) continue;
+                if (isThoughtPart(part)) {
+                  thoughtsMarkdown += chunk;
+                  onStreamChunk?.(chunk, true);
+                } else {
+                  markdown += chunk;
+                  onStreamChunk?.(chunk, false);
                 }
               }
             }
@@ -270,12 +298,14 @@ async function parseSSEResponse(
           const data = JSON.parse(jsonStr);
           if (data.candidates?.[0]?.content?.parts) {
             for (const part of data.candidates[0].content.parts) {
-              if (part.thought && part.text) {
-                thoughtsMarkdown += part.text;
-                onStreamChunk?.(part.text, true);
-              } else if (part.text) {
-                markdown += part.text;
-                onStreamChunk?.(part.text, false);
+              const chunk = extractChunk(part);
+              if (!chunk) continue;
+              if (isThoughtPart(part)) {
+                thoughtsMarkdown += chunk;
+                onStreamChunk?.(chunk, true);
+              } else {
+                markdown += chunk;
+                onStreamChunk?.(chunk, false);
               }
             }
           }
@@ -310,6 +340,30 @@ function parseSingleResponse(
   let markdown = "";
   let thoughtsMarkdown = "";
 
+  const extractChunk = (part: any): string => {
+    if (typeof part?.text === "string" && part.text) return part.text;
+    if (typeof part?.thought === "string" && part.thought) return part.thought;
+    if (
+      part?.thought &&
+      typeof part.thought === "object" &&
+      typeof part.thought.text === "string" &&
+      part.thought.text
+    ) {
+      return part.thought.text;
+    }
+    return "";
+  };
+
+  const isThoughtPart = (part: any): boolean => {
+    return (
+      part?.thought === true ||
+      typeof part?.thought === "string" ||
+      (part?.thought &&
+        typeof part.thought === "object" &&
+        typeof part.thought.text === "string")
+    );
+  };
+
   // 尝试解析 SSE 格式
   const lines = text.split("\n");
   for (const line of lines) {
@@ -321,12 +375,14 @@ function parseSingleResponse(
         const data = JSON.parse(jsonStr);
         if (data.candidates?.[0]?.content?.parts) {
           for (const part of data.candidates[0].content.parts) {
-            if (part.thought && part.text) {
-              thoughtsMarkdown += part.text;
-              onStreamChunk?.(part.text, true);
-            } else if (part.text) {
-              markdown += part.text;
-              onStreamChunk?.(part.text, false);
+            const chunk = extractChunk(part);
+            if (!chunk) continue;
+            if (isThoughtPart(part)) {
+              thoughtsMarkdown += chunk;
+              onStreamChunk?.(chunk, true);
+            } else {
+              markdown += chunk;
+              onStreamChunk?.(chunk, false);
             }
           }
         }

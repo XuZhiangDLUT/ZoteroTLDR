@@ -1,8 +1,20 @@
 import { config } from "../../package.json";
 import { AISummaryModule } from "./aiSummary";
+import { getString } from "../utils/locale";
 import { getPref, setPref } from "../utils/prefs";
 
 export async function registerPrefsScripts(_window: Window) {
+  try {
+    (_window as any).MozXULElement?.insertFTLIfNeeded?.(
+      `${config.addonRef}-preferences.ftl`,
+    );
+    (_window.document as any).l10n
+      ?.translateFragment?.(_window.document.documentElement)
+      ?.catch(() => undefined);
+  } catch (err) {
+    (Zotero as any).logError?.(err);
+  }
+
   if (!addon.data.prefs) {
     addon.data.prefs = {
       window: _window,
@@ -47,7 +59,7 @@ function bindPrefEvents() {
     )
     ?.addEventListener("command", async () => {
       const progress = new ztoolkit.ProgressWindow(config.addonName)
-        .createLine({ text: "测试 API 连接中...", progress: 50 })
+        .createLine({ text: getString("pref-api-test-progress"), progress: 50 })
         .show();
       try {
         await AISummaryModule.testAPI();

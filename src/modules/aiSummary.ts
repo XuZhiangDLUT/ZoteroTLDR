@@ -1045,7 +1045,8 @@ class TaskQueuePanel {
   private dialogWindow: Window | null = null;
   private updateInterval: number | null = null;
   private eventListener: (() => void) | null = null;
-  private expandedTasks: Set<number> = new Set(); // 跟踪展开的任务 ID
+  private expandedThoughtTasks: Set<number> = new Set(); // 跟踪展开“思考过程”的任务 ID
+  private expandedOutputTasks: Set<number> = new Set(); // 跟踪展开“输出”的任务 ID
 
   /**
    * 打开或聚焦面板
@@ -1352,15 +1353,30 @@ class TaskQueuePanel {
           return;
         }
 
-        // 检查是否点击了任务行（展开/收起输出）
-        const taskRow = target.closest("[data-toggle-task]") as HTMLElement;
-        if (taskRow) {
-          const taskId = parseInt(taskRow.dataset.toggleTask || "0", 10);
+        // 展开/收起思考过程
+        const thoughtToggle = target.closest("[data-toggle-thought]") as HTMLElement;
+        if (thoughtToggle) {
+          const taskId = parseInt(thoughtToggle.dataset.toggleThought || "0", 10);
           if (taskId) {
-            if (this.expandedTasks.has(taskId)) {
-              this.expandedTasks.delete(taskId);
+            if (this.expandedThoughtTasks.has(taskId)) {
+              this.expandedThoughtTasks.delete(taskId);
             } else {
-              this.expandedTasks.add(taskId);
+              this.expandedThoughtTasks.add(taskId);
+            }
+            this.updateContent();
+          }
+          return;
+        }
+
+        // 展开/收起输出
+        const outputToggle = target.closest("[data-toggle-output]") as HTMLElement;
+        if (outputToggle) {
+          const taskId = parseInt(outputToggle.dataset.toggleOutput || "0", 10);
+          if (taskId) {
+            if (this.expandedOutputTasks.has(taskId)) {
+              this.expandedOutputTasks.delete(taskId);
+            } else {
+              this.expandedOutputTasks.add(taskId);
             }
             this.updateContent();
           }
@@ -1405,8 +1421,10 @@ class TaskQueuePanel {
     for (const task of tasks) {
       const statusInfo = this.getStatusInfo(task.status);
       const timeInfo = this.getTimeInfo(task);
-      const hasOutput = task.output.length > 0 || task.thoughtOutput.length > 0;
-      const isExpanded = this.expandedTasks.has(task.id);
+      const hasThought = task.thoughtOutput.length > 0;
+      const hasOutput = task.output.length > 0;
+      const isThoughtExpanded = this.expandedThoughtTasks.has(task.id);
+      const isOutputExpanded = this.expandedOutputTasks.has(task.id);
       const isRunning = task.status === "running";
 
       // 任务主体
@@ -1417,11 +1435,11 @@ class TaskQueuePanel {
           ${task.status === "failed" ? "background-color: #ffebee;" : ""}
           ${task.status === "cancelled" ? "background-color: #fff3e0;" : ""}
         ">
-          <div ${hasOutput ? `data-toggle-task="${task.id}"` : ""} style="
+          <div style="
             display: flex;
             align-items: center;
             padding: 8px 12px;
-            cursor: ${hasOutput ? "pointer" : "default"};
+            cursor: default;
           ">
             <span style="
               display: inline-block;
@@ -1444,7 +1462,8 @@ class TaskQueuePanel {
               </div>
               <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 ${statusInfo.text}${timeInfo}
-                ${hasOutput ? ` · <span style="color: #1976d2; cursor: pointer;">${isExpanded ? "▼ 收起" : "▶ 展开输出"}</span>` : ""}
+                ${hasThought ? ` · <span data-toggle-thought="${task.id}" style="color: #7c4dff; cursor: pointer;">${isThoughtExpanded ? "▼ 收起思考" : "▶ 展开思考"}</span>` : ""}
+                ${hasOutput ? ` · <span data-toggle-output="${task.id}" style="color: #1976d2; cursor: pointer;">${isOutputExpanded ? "▼ 收起输出" : "▶ 展开输出"}</span>` : ""}
                 ${task.error ? ` - <span style="color: #c62828;">${this.escapeHtml(task.error.substring(0, 50))}${task.error.length > 50 ? "..." : ""}</span>` : ""}
               </div>
             </div>
@@ -1461,7 +1480,7 @@ class TaskQueuePanel {
               >取消</button>
             ` : ""}
           </div>
-          ${this.renderOutputArea(task, isExpanded, isRunning)}
+          ${this.renderTaskDetails(task, isThoughtExpanded, isOutputExpanded, isRunning)}
         </div>
       `;
     }
@@ -1505,7 +1524,16 @@ class TaskQueuePanel {
 
     // 对于运行中的任务，滚动输出区域到底部
     for (const task of tasks) {
-      if (task.status === "running" || this.expandedTasks.has(task.id)) {
+      const isThoughtExpanded = this.expandedThoughtTasks.has(task.id);
+      const isOutputExpanded = this.expandedOutputTasks.has(task.id);
+
+      if (task.status === "running" || isThoughtExpanded) {
+        const thoughtEl = doc.getElementById(`thought-${task.id}`);
+        if (thoughtEl) {
+          thoughtEl.scrollTop = thoughtEl.scrollHeight;
+        }
+      }
+      if (task.status === "running" || isOutputExpanded) {
         const outputEl = doc.getElementById(`output-${task.id}`);
         if (outputEl) {
           outputEl.scrollTop = outputEl.scrollHeight;
@@ -1515,61 +1543,106 @@ class TaskQueuePanel {
   }
 
   /**
-   * 渲染输出区域
+   * 渲染思考/输出区域
    */
-  private renderOutputArea(task: TaskInfo, isExpanded: boolean, isRunning: boolean): string {
-    const hasOutput = task.output.length > 0 || task.thoughtOutput.length > 0;
-    if (!hasOutput) return "";
-
-    // 运行中的任务默认显示最后几行，可展开查看全部
-    // 已完成的任务默认收起，点击展开查看
-    const showOutput = isRunning || isExpanded;
-    if (!showOutput && !isRunning) {
-      return "";
-    }
-
-    const output = task.output || "";
+  private renderTaskDetails(
+    task: TaskInfo,
+    isThoughtExpanded: boolean,
+    isOutputExpanded: boolean,
+    isRunning: boolean,
+  ): string {
     const thoughtOutput = task.thoughtOutput || "";
+    const output = task.output || "";
 
-    // 获取显示内容
-    let displayContent = "";
+    const showThought = thoughtOutput.length > 0 && (isRunning || isThoughtExpanded);
+    const showOutput = output.length > 0 && (isRunning || isOutputExpanded);
 
-    // 如果有思考输出，显示思考标签
-    if (thoughtOutput) {
-      const thoughtLines = thoughtOutput.split("\n");
-      const thoughtPreview = isExpanded
-        ? thoughtOutput
-        : thoughtLines.slice(-3).join("\n");
-      displayContent += `<div style="color: #7c4dff; margin-bottom: 4px;"><b>[思考过程]</b></div>`;
-      displayContent += `<div style="color: #666; margin-bottom: 8px;">${this.escapeHtml(thoughtPreview)}</div>`;
+    if (!showThought && !showOutput) return "";
+
+    const bg = isRunning ? "#f8f9fa" : "#fafafa";
+    let html = "";
+
+    if (showThought) {
+      const preview = this.buildStreamPreview(thoughtOutput, isThoughtExpanded, 3);
+      const header = isThoughtExpanded
+        ? `<div style="color: #7c4dff; margin-bottom: 4px;"><b>[思考过程]</b></div>`
+        : "";
+      html += `
+        <div
+          id="thought-${task.id}"
+          class="output-preview ${isThoughtExpanded ? "output-expanded" : "output-collapsed"}"
+          style="
+            margin: 0 12px 8px 30px;
+            padding: 8px;
+            background-color: ${bg};
+            border-radius: 4px;
+            border-left: 3px solid #7c4dff;
+          "
+        >
+          ${header}
+          <div style="color: #666;">${this.escapeHtml(preview)}</div>
+        </div>
+      `;
     }
 
-    // 显示主输出
-    if (output) {
-      const outputLines = output.split("\n");
-      const outputPreview = isExpanded
-        ? output
-        : outputLines.slice(-3).join("\n");
-
-      if (thoughtOutput) {
-        displayContent += `<div style="color: #1976d2; margin-bottom: 4px;"><b>[输出]</b></div>`;
-      }
-      displayContent += this.escapeHtml(outputPreview);
+    if (showOutput) {
+      const preview = this.buildStreamPreview(output, isOutputExpanded, 3);
+      html += `
+        <div
+          id="output-${task.id}"
+          class="output-preview ${isOutputExpanded ? "output-expanded" : "output-collapsed"}"
+          style="
+            margin: 0 12px 8px 30px;
+            padding: 8px;
+            background-color: ${bg};
+            border-radius: 4px;
+            border-left: 3px solid ${isRunning ? "#2196f3" : "#ddd"};
+          "
+        >${this.escapeHtml(preview)}</div>
+      `;
     }
 
-    return `
-      <div
-        id="output-${task.id}"
-        class="output-preview ${isExpanded ? "output-expanded" : "output-collapsed"}"
-        style="
-          margin: 0 12px 8px 30px;
-          padding: 8px;
-          background-color: ${isRunning ? "#f8f9fa" : "#fafafa"};
-          border-radius: 4px;
-          border-left: 3px solid ${isRunning ? "#2196f3" : "#ddd"};
-        "
-      >${displayContent}</div>
-    `;
+    return html;
+  }
+
+  /**
+   * 构建流式预览文本
+   * - 默认取最后 N 行（按 \n 分割）
+   * - 若换行太少（尤其是单行不断追加），则改为取最后 N 行 * 固定字符数 的尾部窗口
+   *   并手动插入换行，保证在折叠态也能看到“尾部”实时更新
+   */
+  private buildStreamPreview(text: string, expanded: boolean, maxLines: number): string {
+    const normalized = (text || "").replace(/\r\n/g, "\n");
+    if (expanded) return normalized;
+
+    const trimmed = normalized.replace(/\s+$/, "");
+    if (!trimmed) return "";
+
+    // 先按真实换行取最后 N 行（去掉末尾空行，避免预览出现空白）
+    const lines = trimmed.split("\n");
+    while (lines.length > 0 && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
+    if (lines.length >= maxLines) {
+      return lines.slice(-maxLines).join("\n");
+    }
+
+    // 换行不足时：用尾部窗口 + 固定宽度分段，模拟“最后 N 行”
+    const approxCharsPerLine = 80;
+    const maxChars = approxCharsPerLine * maxLines;
+    const tail = trimmed.length > maxChars ? trimmed.slice(-maxChars) : trimmed;
+
+    const chunks: string[] = [];
+    for (let end = tail.length; end > 0; end -= approxCharsPerLine) {
+      const start = Math.max(0, end - approxCharsPerLine);
+      chunks.unshift(tail.slice(start, end));
+    }
+
+    if (trimmed.length > maxChars && chunks.length > 0) {
+      chunks[0] = "…" + chunks[0];
+    }
+
+    return chunks.slice(-maxLines).join("\n");
   }
 
   /**

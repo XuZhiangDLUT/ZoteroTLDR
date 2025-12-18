@@ -174,6 +174,22 @@ async function onStartup() {
 })();
 ```
 
+### 524 超时应对
+
+当使用 OpenAI 兼容代理（例如走 Cloudflare）进行**远端 PDF 解析**时，长响应可能触发 **524（超时）**。本项目针对 524 主要采用了两种策略：
+
+1) **流式输出（SSE）作为“保活”与进度输出**
+   - 远端 PDF 模式改用 Gemini 原生流式接口：`:streamGenerateContent?alt=sse`
+   - 通过 `ReadableStream` 逐行解析 `data: {...json...}`（`src/llm/providers.ts` → `summarizeWithRemotePdf()` / `parseSSEResponse()`）
+   - 把每个 chunk 通过 `onStreamChunk(chunk, isThought)` 回传，任务队列面板可实时更新
+
+2) **展示实时“思考/推理”片段（进度 + 调试）**
+   - 开启“思考模式”后发送 `thinkingConfig.includeThoughts=true`，兼容的服务端会返回 `thought` parts
+   - 将 `thought` 与正文输出分流（`isThought=true/false`），在任务队列面板中分区显示（`src/modules/aiSummary.ts`）
+   - 通过右键菜单 **“查看 AI 任务队列”** 打开面板（支持展开/收起与运行中自动滚动）
+
+补充：`retryOn524` 可配置在偶发 524 时自动快速重试，但“流式接口”是主要解决方案。
+
 ## 许可证
 
 AGPL-3.0-or-later

@@ -174,6 +174,22 @@ async function onStartup() {
 })();
 ```
 
+### Cloudflare 524 Timeout Mitigation
+
+When using an OpenAI-compatible proxy (e.g. Cloudflare) for long remote PDF parsing, the request may hit **524 (timeout)**. This project uses two strategies to reduce 524 and to make long-running tasks observable:
+
+1) **Streamed response (SSE) to keep the connection alive**
+   - Remote PDF mode uses Gemini native streaming endpoint: `:streamGenerateContent?alt=sse`
+   - Parse `data: {...json...}` incrementally via `ReadableStream` (`src/llm/providers.ts` → `summarizeWithRemotePdf()` / `parseSSEResponse()`)
+   - Forward chunks through `onStreamChunk(chunk, isThought)` so the UI can update while the request is still running
+
+2) **Real-time “thoughts” display (progress + debugging)**
+   - If **Enable Thinking** is on, send `thinkingConfig.includeThoughts=true` so compatible providers may return `thought` parts
+   - Split streamed chunks into normal output vs thought output (`isThought=true/false`), and show them separately in the Task Queue Panel (`src/modules/aiSummary.ts`)
+   - Open the panel via context menu: **“查看 AI 任务队列”** (supports expand/collapse + auto-scroll for running tasks)
+
+Extra: there is also a configurable `retryOn524` for quick retries on occasional 524s, but streaming is the primary fix.
+
 ## License
 
 AGPL-3.0-or-later
