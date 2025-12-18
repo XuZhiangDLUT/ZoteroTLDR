@@ -490,23 +490,93 @@ async function getFileSize(filePath: string): Promise<number> {
 
 /**
  * 获取 PDF 页数
+ *
+ * 说明：
+ * - 优先读取 Zotero 数据库（fulltextItems.totalPages / fulltextItems.indexedPages）
+ * - 其次尝试 pdf.js（如果可用）
+ * - 最后回退到解析 PDF Header 中的 /Count N（对部分压缩/对象流 PDF 可能无效）
  */
-async function getPdfPageCount(filePath: string): Promise<number | null> {
-  try {
-    // 使用 Zotero 内置的 PDF.js
-    const { pdfjsLib } = (Zotero as any).PDFWorker;
-    if (!pdfjsLib) {
-      return null;
-    }
+async function getPdfPageCount(
+  attachment: Zotero.Item,
+  filePath: string,
+): Promise<number | null> {
+  const toPositiveInt = (value: unknown): number | null => {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  };
 
-    const data = await Zotero.File.getBinaryContentsAsync(filePath);
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
-    const numPages = pdf.numPages;
-    pdf.destroy();
-    return numPages;
-  } catch (_e) {
-    return null;
+  const binaryStringToUint8Array = (binStr: string): Uint8Array => {
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+      bytes[i] = binStr.charCodeAt(i) & 0xff;
+    }
+    return bytes;
+  };
+
+  // 方法 1: 读取 Zotero 数据库（最快、最稳定，Zotero UI 显示页数通常也来自这里）
+  try {
+    const db = (Zotero as any).DB;
+    const query = db?.queryAsync || db?.query;
+    if (query) {
+      const rows = await query.call(
+        db,
+        "SELECT totalPages, indexedPages FROM fulltextItems WHERE itemID = ?",
+        [attachment.id],
+      );
+      const row = rows?.[0];
+      const totalPages = toPositiveInt(row?.totalPages);
+      if (totalPages !== null) {
+        return totalPages;
+      }
+      const indexedPages = toPositiveInt(row?.indexedPages);
+      if (indexedPages !== null) {
+        return indexedPages;
+      }
+    }
+  } catch (e) {
+    ztoolkit.log("getPdfPageCount: DB query error:", e);
   }
+
+  // 方法 2: 尝试使用 pdf.js（如果可用）
+  try {
+    const pdfjsLib = (Zotero as any).PDFWorker?.pdfjsLib;
+    if (pdfjsLib) {
+      const bin = await Zotero.File.getBinaryContentsAsync(filePath);
+      const data = binaryStringToUint8Array(bin);
+      const loadingTask = pdfjsLib.getDocument({
+        data,
+        stopAtErrors: false,
+        enableXfa: false,
+      });
+      const pdf = await loadingTask.promise;
+      const numPages = pdf.numPages;
+      pdf.destroy();
+      return numPages;
+    }
+  } catch (e) {
+    ztoolkit.log("getPdfPageCount: pdfjsLib error:", e);
+  }
+
+  // 方法 3: 解析 PDF 文件头获取页数（后备方案）
+  try {
+    const content = await Zotero.File.getBinaryContentsAsync(filePath);
+    // PDF 中页数通常在 /Count N 格式中，找最大的 Count 值
+    const countMatches = content.match(/\/Count\s+(\d+)/g);
+    if (countMatches && countMatches.length > 0) {
+      let maxCount = 0;
+      for (const match of countMatches) {
+        const num = parseInt(match.replace(/\/Count\s+/, ""), 10);
+        if (num > maxCount) maxCount = num;
+      }
+      if (maxCount > 0) {
+        return maxCount;
+      }
+    }
+  } catch (e) {
+    ztoolkit.log("getPdfPageCount: header parse error:", e);
+  }
+
+  return null;
 }
 
 /**
@@ -624,8 +694,15 @@ async function getEligibleAttachments(
     // 检查 PDF 页数
     let pageCount: number | null = null;
     if (prefs.maxPageCount > 0) {
-      pageCount = await getPdfPageCount(filePath);
-      if (pageCount !== null && pageCount > prefs.maxPageCount) {
+      pageCount = await getPdfPageCount(att, filePath);
+      if (pageCount === null) {
+        skipped.push({
+          fileName,
+          reason: `无法获取页数 (已设置页数限制 ${prefs.maxPageCount}页)`,
+        });
+        continue;
+      }
+      if (pageCount > prefs.maxPageCount) {
         skipped.push({
           fileName,
           reason: `页数过多 (${pageCount}页 > ${prefs.maxPageCount}页)`,
@@ -1138,8 +1215,8 @@ class TaskQueuePanel {
 
     // 打开对话框
     this.dialog.open("AI 摘要任务队列", {
-      width: 500,
-      height: 550,
+      width: 420,
+      height: 500,
       centerscreen: true,
       resizable: true,
       noDialogMode: true,
@@ -1356,7 +1433,7 @@ class TaskQueuePanel {
               flex-shrink: 0;
               ${isRunning ? "animation: pulse 1s infinite;" : ""}
             "></span>
-            <div style="flex: 1; min-width: 0; overflow: hidden;">
+            <div style="flex: 1; min-width: 0; max-width: 280px; overflow: hidden;">
               <div style="
                 white-space: nowrap;
                 overflow: hidden;
@@ -1689,8 +1766,15 @@ export class AISummaryModule {
         // 检查 PDF 页数
         let pageCount: number | null = null;
         if (prefs.maxPageCount > 0) {
-          pageCount = await getPdfPageCount(filePath);
-          if (pageCount !== null && pageCount > prefs.maxPageCount) {
+          pageCount = await getPdfPageCount(item, filePath);
+          if (pageCount === null) {
+            allSkipped.push({
+              fileName,
+              reason: `无法获取页数 (已设置页数限制 ${prefs.maxPageCount}页)`,
+            });
+            continue;
+          }
+          if (pageCount > prefs.maxPageCount) {
             allSkipped.push({
               fileName,
               reason: `页数过多 (${pageCount}页 > ${prefs.maxPageCount}页)`,
