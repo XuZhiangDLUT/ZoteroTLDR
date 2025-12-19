@@ -91,6 +91,13 @@ npm run build
 - 清理不必要的构建产物
 - 根据需要更新 `package.json` 中的版本号
 
+### 更新通道逻辑（稳定/测试）
+
+- **稳定通道**：版本号不含 `-beta`/`-rc`，`update_url` 指向 `update.json`，仅推送稳定版更新
+- **测试通道**：版本号包含 `-beta` 或 `-rc`，`update_url` 指向 `update-beta.json`，仅推送测试版更新
+- **切换通道**：安装对应版本的 `.xpi`（稳定或 beta/rc），Zotero 会使用该版本内置的 `update_url`
+- **发布注意**：发布测试版只更新 `update-beta.json`，不要改动 `update.json`
+
 ### 发布 Beta 版本
 
 Beta 版本用于预发布测试和早期反馈。

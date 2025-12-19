@@ -91,6 +91,13 @@ Output: `.scaffold/build/hanchens-zotero-tldr.xpi`
 - Clean up any unnecessary build artifacts
 - Update version in `package.json` if needed
 
+### Update Channel Logic (Stable vs Test)
+
+- **Stable channel**: version has no `-beta`/`-rc`, `update_url` points to `update.json`, only stable updates are served
+- **Test channel**: version includes `-beta` or `-rc`, `update_url` points to `update-beta.json`, only test updates are served
+- **Switching channels**: install the matching `.xpi` (stable or beta/rc); Zotero uses that build's embedded `update_url`
+- **Release note**: beta releases only update `update-beta.json`; do not touch `update.json`
+
 ### Publishing Beta Version
 
 Use beta versions for pre-release testing and early feedback.

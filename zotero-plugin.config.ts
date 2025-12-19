@@ -1,15 +1,18 @@
 import { defineConfig } from "zotero-plugin-scaffold";
 import pkg from "./package.json";
 
+// Treat beta/rc builds as test channel for update URL selection.
+const updateFileName = /-(beta|rc)(\.|$)/.test(pkg.version)
+  ? "update-beta.json"
+  : "update.json";
+
 export default defineConfig({
   source: ["src", "addon"],
   dist: ".scaffold/build",
   name: pkg.config.addonName,
   id: pkg.config.addonID,
   namespace: pkg.config.addonRef,
-  updateURL: `https://github.com/{{owner}}/{{repo}}/releases/download/release/${
-    pkg.version.includes("-") ? "update-beta.json" : "update.json"
-  }`,
+  updateURL: `https://github.com/{{owner}}/{{repo}}/releases/download/release/${updateFileName}`,
   xpiDownloadLink:
     "https://github.com/{{owner}}/{{repo}}/releases/download/v{{version}}/{{xpiName}}.xpi",
 
