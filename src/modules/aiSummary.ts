@@ -1920,6 +1920,20 @@ export class AISummaryModule {
       },
     });
 
+    // 强制总结菜单项（无视过滤规则，仅支持单个 PDF 附件）
+    ztoolkit.Menu.register("item", {
+      tag: "menuitem",
+      id: `zotero-itemmenu-${addon.data.config.addonRef}-ai-summarize-force`,
+      label: "无视过滤规则直接总结",
+      commandListener: async () => {
+        try {
+          await AISummaryModule.summarizeSelectedForce();
+        } catch (e: any) {
+          ztoolkit.getGlobal("alert")(`AI 总结失败：${e?.message || e}`);
+        }
+      },
+    });
+
     // 任务队列菜单项
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
@@ -2207,6 +2221,149 @@ export class AISummaryModule {
 
     // 等待所有任务完成（这些任务可能与其他调用的任务交错执行）
     await Promise.allSettled(promises);
+  }
+
+  /**
+   * 强制总结：无视过滤规则，仅支持单选的 PDF 附件
+   */
+  static async summarizeSelectedForce(): Promise<void> {
+    const prefs = getPrefs();
+    const pane = ztoolkit.getGlobal("ZoteroPane");
+    const selectedItems = pane.getSelectedItems() as Zotero.Item[];
+
+    if (selectedItems.length !== 1) {
+      ztoolkit
+        .getGlobal("alert")(
+          "请仅选择一个父条目下的 PDF 附件再执行“无视过滤规则直接总结”。",
+        );
+      return;
+    }
+
+    const attachment = selectedItems[0];
+    if (!attachment.isAttachment?.() || !attachment.isAttachment()) {
+      ztoolkit
+        .getGlobal("alert")(
+          "请选择父条目下的 PDF 附件（只能单选附件，不能选择父条目本身）。",
+        );
+      return;
+    }
+
+    const parentID = (attachment as any).parentItemID;
+    const parent = parentID
+      ? (Zotero.Items.get(parentID) as Zotero.Item | undefined)
+      : null;
+    if (!parent || !parent.isRegularItem?.() || !parent.isRegularItem()) {
+      ztoolkit
+        .getGlobal("alert")(
+          "请选择父条目下的 PDF 附件（必须有父条目且为常规条目）。",
+        );
+      return;
+    }
+
+    const contentType =
+      (attachment.getField?.("contentType") as string) ||
+      ((attachment as any).attachmentContentType as string | undefined) ||
+      "";
+    const getFilePath = (attachment as any).getFilePath || attachment.getFilePath;
+    const filePath = getFilePath ? getFilePath.call(attachment) : "";
+    const fileName = filePath ? filePath.split(/[/\\]/).pop() ?? "" : "";
+    const isPdf =
+      contentType.includes("application/pdf") ||
+      fileName.toLowerCase().endsWith(".pdf");
+
+    if (!isPdf) {
+      ztoolkit.getGlobal("alert")("当前选中的附件不是 PDF。");
+      return;
+    }
+
+    if (!filePath) {
+      ztoolkit.getGlobal("alert")("无法获取 PDF 文件路径，请确认附件已下载。");
+      return;
+    }
+
+    let fileExists = false;
+    try {
+      const fileObj = Zotero.File.pathToFile(filePath);
+      fileExists = !!fileObj && fileObj.exists();
+    } catch (_e) {
+      fileExists = false;
+    }
+    if (!fileExists) {
+      ztoolkit.getGlobal("alert")("无法访问该 PDF 文件，请确认已下载到本地。");
+      return;
+    }
+
+    let text = "";
+    if (prefs.pdfParseMode === "local") {
+      try {
+        const txt = await (attachment as any).attachmentText;
+        if (txt) {
+          const fullText = String(txt);
+          text =
+            fullText.length > prefs.maxChars
+              ? fullText.slice(0, prefs.maxChars)
+              : fullText;
+        }
+      } catch (_e) {
+        ztoolkit
+          .getGlobal("alert")(
+            "本地解析模式下无法提取文本，请确保该附件已被索引或切换到远端解析。",
+          );
+        return;
+      }
+
+      if (!text) {
+        ztoolkit
+          .getGlobal("alert")(
+            "本地解析模式下未获取到文本，请确保已完成全文索引或切换到远端解析。",
+          );
+        return;
+      }
+    }
+
+    // 避免重复：如果该 PDF 已在等待/运行队列中，则提示后直接返回
+    const alreadyActive = globalTaskQueue.hasActiveTask(
+      (data) => data.attachment.item.id === attachment.id,
+    );
+    if (alreadyActive) {
+      const pw = new ztoolkit.ProgressWindow(addon.data.config.addonName)
+        .createLine({
+          text: "该 PDF 已在队列中，已忽略重复添加",
+          type: "default",
+        })
+        .show();
+      safeStartCloseTimer(pw, 3000);
+      AISummaryModule.openTaskQueuePanel();
+      return;
+    }
+
+    globalTaskQueue.setConcurrency(prefs.concurrency);
+
+    const taskData: SummaryTaskData = {
+      item: parent,
+      attachment: {
+        item: attachment,
+        fileName,
+        filePath,
+        text,
+        fileSize: 0,
+        pageCount: null,
+      },
+      prefs,
+    };
+
+    const queueStatus = globalTaskQueue.getStatus();
+    const pendingAfterAdd = queueStatus.queued + 1;
+    const notice = new ztoolkit.ProgressWindow(addon.data.config.addonName)
+      .createLine({
+        text: `已添加强制总结任务：${fileName || parent.getDisplayTitle()} (当前队列待处理约 ${pendingAfterAdd} 个)`,
+        progress: 100,
+      })
+      .show();
+    safeStartCloseTimer(notice, 3000);
+
+    const promise = globalTaskQueue.submit(taskData);
+    await Promise.allSettled([promise]);
   }
 
   /**
