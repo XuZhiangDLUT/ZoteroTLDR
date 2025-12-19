@@ -9,7 +9,7 @@
 
 ## 功能特点
 
-- **AI 摘要生成**：右键 → "AI 总结到子笔记"，一键生成结构化摘要
+- **AI 摘要生成**：右键 → "ZoteroTLDR: AI 总结"，一键生成结构化摘要
 - **独立处理每个 PDF**：一个条目有多个 PDF 时，每个 PDF 生成独立的笔记
 - **Gemini 集成**：通过 OpenAI 兼容代理（如 x666.me）调用 Gemini API
 - **思考模式**：支持 Gemini 的思考/推理能力
@@ -27,7 +27,7 @@
 ## 快速开始
 
 1. 在 Zotero 中选择一个或多个条目（或 PDF 附件）
-2. 右键 → **"AI 总结到子笔记"**
+2. 右键 → **"ZoteroTLDR: AI 总结"**
 3. 每个 PDF 都会被处理并生成一个摘要笔记
 
 ## 设置
@@ -305,7 +305,7 @@ async function onStartup() {
 2. **展示实时“思考/推理”片段（进度 + 调试）**
    - 开启“思考模式”后发送 `thinkingConfig.includeThoughts=true`，兼容的服务端会返回 `thought` parts
    - 将 `thought` 与正文输出分流（`isThought=true/false`），在任务队列面板中分区显示（`src/modules/aiSummary.ts`）
-   - 通过右键菜单 **“查看 AI 任务队列”** 打开面板（支持展开/收起与运行中自动滚动）
+   - 通过右键菜单 **“ZoteroTLDR: 查看总结任务队列”** 打开面板（支持展开/收起与运行中自动滚动）
 
 补充：`retryOnTransientErrors` 可配置在偶发 524/流错误/超时时自动快速重试，但“流式接口”仍是主要解决方案。
 

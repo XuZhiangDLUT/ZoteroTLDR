@@ -1910,7 +1910,7 @@ export class AISummaryModule {
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       id: `zotero-itemmenu-${addon.data.config.addonRef}-ai-summarize`,
-      label: "AI 总结到子笔记",
+      label: "ZoteroTLDR: AI 总结",
       commandListener: async () => {
         try {
           await AISummaryModule.summarizeSelected();
@@ -1924,7 +1924,7 @@ export class AISummaryModule {
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       id: `zotero-itemmenu-${addon.data.config.addonRef}-ai-summarize-force`,
-      label: "无视过滤规则直接总结",
+      label: "ZoteroTLDR: AI 总结（无过滤）",
       commandListener: async () => {
         try {
           await AISummaryModule.summarizeSelectedForce();
@@ -1938,7 +1938,7 @@ export class AISummaryModule {
     ztoolkit.Menu.register("item", {
       tag: "menuitem",
       id: `zotero-itemmenu-${addon.data.config.addonRef}-task-queue`,
-      label: "查看 AI 任务队列",
+      label: "ZoteroTLDR: 查看总结任务队列",
       commandListener: () => {
         AISummaryModule.openTaskQueuePanel();
       },
@@ -2234,7 +2234,7 @@ export class AISummaryModule {
     if (selectedItems.length !== 1) {
       ztoolkit
         .getGlobal("alert")(
-          "请仅选择一个父条目下的 PDF 附件再执行“无视过滤规则直接总结”。",
+          "请仅选择一个父条目下的 PDF 附件再执行“ZoteroTLDR: AI 总结（无过滤）”。",
         );
       return;
     }

@@ -9,7 +9,7 @@ A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your 
 
 ## Features
 
-- **AI Summarization**: Right-click → "AI 总结到子笔记" to generate structured summaries
+- **AI Summarization**: Right-click → "ZoteroTLDR: AI 总结" to generate structured summaries
 - **Per-PDF Processing**: Each PDF in an item generates its own separate note
 - **Gemini Integration**: Uses Gemini API via OpenAI-compatible proxy (e.g., x666.me)
 - **Thinking Mode**: Supports Gemini's thinking/reasoning capabilities
@@ -27,7 +27,7 @@ A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your 
 ## Quick Start
 
 1. Select one or more items (or PDF attachments) in Zotero
-2. Right-click → **"AI 总结到子笔记"**
+2. Right-click → **"ZoteroTLDR: AI 总结"**
 3. Each PDF will be processed and a summary note will be created
 
 ## Settings
@@ -305,7 +305,7 @@ When using an OpenAI-compatible proxy (e.g. Cloudflare) for long remote PDF pars
 2. **Real-time “thoughts” display (progress + debugging)**
    - If **Enable Thinking** is on, send `thinkingConfig.includeThoughts=true` so compatible providers may return `thought` parts
    - Split streamed chunks into normal output vs thought output (`isThought=true/false`), and show them separately in the Task Queue Panel (`src/modules/aiSummary.ts`)
-   - Open the panel via context menu: **“查看 AI 任务队列”** (supports expand/collapse + auto-scroll for running tasks)
+   - Open the panel via context menu: **“ZoteroTLDR: 查看总结任务队列”** (supports expand/collapse + auto-scroll for running tasks)
 
 Extra: there is also a configurable `retryOnTransientErrors` to retry occasional 524/stream/timeout hiccups, but streaming is the primary fix.
 
