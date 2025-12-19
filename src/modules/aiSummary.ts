@@ -108,7 +108,8 @@ function isTransientErrorMessage(msg: string): boolean {
     lowered.includes("timeout") ||
     lowered.includes("timed out") ||
     lowered.includes("operation timed out") ||
-    lowered.includes("etimeout")
+    lowered.includes("etimeout") ||
+    lowered.includes("invalid authentication credentials") // 部分代理把认证失败包装成 429/upstream_error
   );
 }
 
