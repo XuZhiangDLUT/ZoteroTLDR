@@ -1,7 +1,7 @@
 import { marked } from "marked";
 import { getPrefs, type AddonPrefs } from "../utils/prefs";
 import {
-  summarize,
+  summarizeWithGeminiTextStream,
   summarizeWithRemotePdf,
   testAPI,
   type SummarizeResult,
@@ -1013,13 +1013,17 @@ async function summarizeSinglePdf(
           fileName: attachment.fileName,
         });
 
-        result = await summarize({
+        result = await summarizeWithGeminiTextStream({
           title,
           abstract,
           content: localText,
           prompt: localPrompt,
           prefs,
+          onStreamChunk,
         });
+        if (!result.markdown?.trim()) {
+          throw new Error("本地解析返回空摘要，请检查 API 返回或提示词。");
+        }
         usedLocalFallback = true;
       } else {
         // 其他错误直接抛出
@@ -1036,13 +1040,17 @@ async function summarizeSinglePdf(
       fileName: attachment.fileName,
     });
 
-    result = await summarize({
+    result = await summarizeWithGeminiTextStream({
       title,
       abstract,
       content: attachment.text,
       prompt,
       prefs,
+      onStreamChunk,
     });
+    if (!result.markdown?.trim()) {
+      throw new Error("本地解析返回空摘要，请检查 API 返回或提示词。");
+    }
   }
 
   // 如果使用了 fallback，在结果中添加说明

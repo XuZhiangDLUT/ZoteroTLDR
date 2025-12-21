@@ -194,6 +194,58 @@ export async function summarizeWithRemotePdf(
 }
 
 /**
+ * Stream Gemini native API for text-only input (local parse).
+ */
+export async function summarizeWithGeminiTextStream(
+  opts: SummarizeOptions & {
+    onStreamChunk?: (chunk: string, isThought: boolean) => void;
+  },
+): Promise<SummarizeResult> {
+  const { prefs, prompt, onStreamChunk } = opts;
+
+  const baseUrl = prefs.apiBase.replace(/\/v1\/?$/, "").replace(/\/$/, "");
+  const url = `${baseUrl}/v1/models/${prefs.model}:streamGenerateContent?alt=sse`;
+
+  const body: Record<string, unknown> = {
+    contents: [
+      {
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      temperature: prefs.temperature ?? 0.2,
+      maxOutputTokens: prefs.maxOutputTokens ?? 65536,
+    },
+  };
+
+  if (prefs.enableThoughts) {
+    (body.generationConfig as Record<string, unknown>).thinkingConfig = {
+      thinkingBudget: prefs.thinkingBudget ?? -1,
+      includeThoughts: true,
+    };
+  }
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getApiKey()}`,
+      "x-goog-api-key": getApiKey(),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(
+      `本地解析失败: ${res.status} ${errorText.substring(0, 500)}`,
+    );
+  }
+
+  return await parseSSEResponse(res, onStreamChunk);
+}
+
+/**
  * 解析 SSE 流式响应（真正的流式读取）
  */
 async function parseSSEResponse(
