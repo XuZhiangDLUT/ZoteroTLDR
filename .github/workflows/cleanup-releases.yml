@@ -1,0 +1,23 @@
+name: Cleanup Old Releases
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete old releases
+        uses: sgpublic/delete-release-action@v1.2
+        with:
+          release-drop: true
+          release-keep-count: 0
+          release-drop-tag: true
+          pre-release-drop: true
+          pre-release-keep-count: 0
+          pre-release-drop-tag: true
+          draft-drop: false
