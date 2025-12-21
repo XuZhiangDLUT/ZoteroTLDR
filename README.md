@@ -93,10 +93,43 @@ Output: `.scaffold/build/hanchens-zotero-tldr.xpi`
 
 ### Update Channel Logic (Stable vs Test)
 
-- **Stable channel**: version has no `-beta`/`-rc`, `update_url` points to `update.json`, only stable updates are served
-- **Test channel**: version includes `-beta` or `-rc`, `update_url` points to `update-beta.json`, only test updates are served
-- **Switching channels**: install the matching `.xpi` (stable or beta/rc); Zotero uses that build's embedded `update_url`
-- **Release note**: beta releases only update `update-beta.json`; do not touch `update.json`
+This plugin uses **two separate update channels** to ensure beta testers and stable users receive appropriate updates:
+
+#### How It Works
+
+1. **Two Update Manifests**:
+   - `update.json` - Contains only stable versions (e.g., `0.2.4`, `0.2.5`)
+   - `update-beta.json` - Contains only beta/RC versions (e.g., `0.2.5-beta.1`, `0.2.5-rc.1`)
+
+2. **Version-Specific `update_url`**:
+   - **Stable builds** (e.g., `0.2.4`): `update_url` → `update.json`
+   - **Beta builds** (e.g., `0.2.5-beta.1`): `update_url` → `update-beta.json`
+   - This URL is embedded in the `.xpi` file's `manifest.json`
+
+3. **How Zotero Checks for Updates**:
+   - Zotero periodically fetches the `update_url` from the **installed plugin**
+   - If you installed a **stable** `.xpi`, Zotero only checks `update.json` → sees only stable versions
+   - If you installed a **beta** `.xpi`, Zotero only checks `update-beta.json` → sees only beta versions
+
+#### Channel Isolation Guarantees
+
+- ✅ **Stable users NEVER see beta updates** (because `update.json` never contains beta versions)
+- ✅ **Beta users NEVER see stable updates** (because `update-beta.json` never contains stable versions)
+- ✅ **Channels are completely isolated** by design
+
+#### How to Switch Channels
+
+1. **From Stable → Beta**: Download and install a beta `.xpi` (e.g., `v0.2.5-beta.1`)
+2. **From Beta → Stable**: Download and install a stable `.xpi` (e.g., `v0.2.4`)
+
+Once you install the new `.xpi`, Zotero will use that build's embedded `update_url` for all future update checks.
+
+#### Release Rules
+
+- **When publishing beta**: Only update `update-beta.json` (do NOT touch `update.json`)
+- **When publishing stable**: Only update `update.json` (do NOT touch `update-beta.json`)
+- **Beta release settings**: Must be marked as "pre-release" on GitHub
+- **Stable release settings**: Must NOT be marked as "pre-release" on GitHub
 
 ### Publishing Beta Version
 

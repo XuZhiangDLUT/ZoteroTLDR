@@ -93,10 +93,43 @@ npm run build
 
 ### 更新通道逻辑（稳定/测试）
 
-- **稳定通道**：版本号不含 `-beta`/`-rc`，`update_url` 指向 `update.json`，仅推送稳定版更新
-- **测试通道**：版本号包含 `-beta` 或 `-rc`，`update_url` 指向 `update-beta.json`，仅推送测试版更新
-- **切换通道**：安装对应版本的 `.xpi`（稳定或 beta/rc），Zotero 会使用该版本内置的 `update_url`
-- **发布注意**：发布测试版只更新 `update-beta.json`，不要改动 `update.json`
+本插件使用**两个独立的更新通道**来确保测试用户和正式用户各自收到合适的更新：
+
+#### 工作原理
+
+1. **两个更新清单**：
+   - `update.json` - 仅包含稳定版本（例如：`0.2.4`、`0.2.5`）
+   - `update-beta.json` - 仅包含测试/RC 版本（例如：`0.2.5-beta.1`、`0.2.5-rc.1`）
+
+2. **版本专属的 `update_url`**：
+   - **稳定版构建**（如 `0.2.4`）：`update_url` → `update.json`
+   - **测试版构建**（如 `0.2.5-beta.1`）：`update_url` → `update-beta.json`
+   - 这个 URL 被嵌入在 `.xpi` 文件的 `manifest.json` 中
+
+3. **Zotero 如何检查更新**：
+   - Zotero 定期从**已安装插件**的 `update_url` 获取更新信息
+   - 如果你安装了**稳定版** `.xpi`，Zotero 只会检查 `update.json` → 只看到稳定版本
+   - 如果你安装了**测试版** `.xpi`，Zotero 只会检查 `update-beta.json` → 只看到测试版本
+
+#### 通道隔离保证
+
+- ✅ **稳定版用户永远看不到测试版更新**（因为 `update.json` 永远不包含测试版本）
+- ✅ **测试版用户永远看不到稳定版更新**（因为 `update-beta.json` 永远不包含稳定版本）
+- ✅ **通道完全隔离**，这是设计保证的
+
+#### 如何切换通道
+
+1. **从稳定版 → 测试版**：下载并安装测试版 `.xpi`（如 `v0.2.5-beta.1`）
+2. **从测试版 → 稳定版**：下载并安装稳定版 `.xpi`（如 `v0.2.4`）
+
+一旦安装了新的 `.xpi`，Zotero 将使用该构建版本内置的 `update_url` 进行所有后续更新检查。
+
+#### 发布规则
+
+- **发布测试版时**：只更新 `update-beta.json`（不要改动 `update.json`）
+- **发布稳定版时**：只更新 `update.json`（不要改动 `update-beta.json`）
+- **测试版发布设置**：必须在 GitHub 上标记为"pre-release"（预发布）
+- **稳定版发布设置**：不能在 GitHub 上标记为"pre-release"
 
 ### 发布 Beta 版本
 
