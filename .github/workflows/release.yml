@@ -38,6 +38,31 @@ jobs:
           npm run release
           sleep 1s
 
+      - name: Update in-repo update manifest
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          IS_PRERELEASE="$(node -p "require('./package.json').version.includes('-') ? 'true' : 'false'")"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git checkout main
+
+          mkdir -p updates
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            cp .scaffold/build/update-beta.json updates/update-beta.json
+            git add updates/update-beta.json
+            git diff --cached --quiet || git commit -m "chore: update beta manifest for v${VERSION}"
+          else
+            cp .scaffold/build/update.json updates/update.json
+            git add updates/update.json
+            git diff --cached --quiet || git commit -m "chore: update stable manifest for v${VERSION}"
+          fi
+
+          git push origin main
+
       - name: Notify release
         uses: apexskier/github-release-commenter@v1
         continue-on-error: true

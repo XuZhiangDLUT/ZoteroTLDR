@@ -97,24 +97,23 @@ This plugin uses **two separate update channels** to ensure beta testers and sta
 
 #### How It Works
 
-1. **Two Update Manifests**:
-   - `update.json` - Contains only stable versions (e.g., `0.2.4`, `0.2.5`)
-   - `update-beta.json` - Contains only beta/RC versions (e.g., `0.2.5-beta.1`, `0.2.5-rc.1`)
+1. **Two Update Manifests (committed in-repo)**:
+   - `updates/update.json` - Stable channel (only stable versions, keep latest)
+   - `updates/update-beta.json` - Test channel (only pre-releases like beta/rc, keep latest)
 
-2. **Version-Specific `update_url`**:
-   - **Stable builds** (e.g., `0.2.4`): `update_url` → `update.json`
-   - **Beta builds** (e.g., `0.2.5-beta.1`): `update_url` → `update-beta.json`
-   - This URL is embedded in the `.xpi` file's `manifest.json`
+2. **Version-Specific `update_url` (embedded in the `.xpi`)**:
+   - **Stable builds** (e.g., `0.2.4`): `https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update.json`
+   - **Test builds** (e.g., `0.2.5-beta.1`): `https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update-beta.json`
 
 3. **How Zotero Checks for Updates**:
    - Zotero periodically fetches the `update_url` from the **installed plugin**
-   - If you installed a **stable** `.xpi`, Zotero only checks `update.json` → sees only stable versions
-   - If you installed a **beta** `.xpi`, Zotero only checks `update-beta.json` → sees only beta versions
+   - If you installed a **stable** `.xpi`, Zotero only checks `updates/update.json` (stable only)
+   - If you installed a **test** `.xpi`, Zotero only checks `updates/update-beta.json` (test only)
 
 #### Channel Isolation Guarantees
 
-- ✅ **Stable users NEVER see beta updates** (because `update.json` never contains beta versions)
-- ✅ **Beta users NEVER see stable updates** (because `update-beta.json` never contains stable versions)
+- ✅ **Stable users NEVER see test updates** (because `updates/update.json` never contains pre-release versions)
+- ✅ **Test users NEVER see stable updates** (because `updates/update-beta.json` never contains stable versions)
 - ✅ **Channels are completely isolated** by design
 
 #### How to Switch Channels
@@ -126,10 +125,21 @@ Once you install the new `.xpi`, Zotero will use that build's embedded `update_u
 
 #### Release Rules
 
-- **When publishing beta**: Only update `update-beta.json` (do NOT touch `update.json`)
-- **When publishing stable**: Only update `update.json` (do NOT touch `update-beta.json`)
-- **Beta release settings**: Must be marked as "pre-release" on GitHub
-- **Stable release settings**: Must NOT be marked as "pre-release" on GitHub
+- **Version naming**:
+  - Stable: `X.Y.Z`
+  - Test: `X.Y.Z-beta.N` / `X.Y.Z-rc.N` (any `-` pre-release goes to test channel)
+- **Tag naming**:
+  - Stable: `vX.Y.Z`
+  - Test: `vX.Y.Z-beta.N` / `vX.Y.Z-rc.N`
+- **Update manifest update (automated by CI)**:
+  - Publishing **test**: overwrite `updates/update-beta.json` only
+  - Publishing **stable**: overwrite `updates/update.json` only
+- **GitHub Release settings**:
+  - Test releases MUST be marked as "pre-release"
+  - Stable releases MUST NOT be marked as "pre-release"
+- **Retention**: GitHub Actions keeps only the latest stable release and the latest pre-release (older ones are deleted automatically).
+
+> Migration note: Older `.xpi` builds may still use the legacy `.../releases/download/release/update*.json` URL. Those builds will stop auto-updating once the legacy manifest is no longer maintained. Install a newer `.xpi` once to migrate to the in-repo `updates/` manifests.
 
 ### Publishing Beta Version
 
@@ -164,6 +174,8 @@ git push origin v0.2.2-beta.1
 # - Build the project
 # - Create GitHub Release (marked as pre-release)
 # - Upload the .xpi file
+# - Update `updates/update-beta.json` on `main` (test channel)
+# - Cleanup old releases (keeps latest stable + latest pre-release)
 ```
 
 ### Publishing Stable Version
@@ -198,6 +210,8 @@ git push origin v0.2.2
 # - Build the project
 # - Create GitHub Release (stable)
 # - Upload the .xpi file
+# - Update `updates/update.json` on `main` (stable channel)
+# - Cleanup old releases (keeps latest stable + latest pre-release)
 ```
 
 ### Manual Release (Without GitHub Actions)
@@ -212,6 +226,15 @@ git tag v0.2.2-beta.1
 
 # 3. Create release manually
 npm run release
+
+# 4. Update in-repo update manifest (pick ONE)
+# - Stable channel (X.Y.Z):
+cp .scaffold/build/update.json updates/update.json
+# - Test channel (X.Y.Z-beta.N / X.Y.Z-rc.N):
+cp .scaffold/build/update-beta.json updates/update-beta.json
+git add updates/update*.json
+git commit -m "chore: update update manifest"
+git push origin main
 
 # Or create GitHub release via web interface:
 # - Visit: https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/new
@@ -234,7 +257,9 @@ The project uses GitHub Actions (`.github/workflows/release.yml`) which triggers
 2. Runs `npm run build`
 3. Runs `npm run release` to create GitHub Release
 4. Uploads `.xpi` file automatically
-5. Adds release notifications to related issues/PRs
+5. Commits the channel update manifest to `updates/` on `main`
+6. Cleans up old GitHub Releases (keeps latest stable + latest pre-release)
+7. Adds release notifications to related issues/PRs
 
 Check release status at: https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
 

@@ -1,8 +1,8 @@
 import { defineConfig } from "zotero-plugin-scaffold";
 import pkg from "./package.json";
 
-// Treat beta/rc builds as test channel for update URL selection.
-const updateFileName = /-(beta|rc)(\.|$)/.test(pkg.version)
+// Any pre-release build (version includes "-") is treated as the test channel.
+const updateFileName = pkg.version.includes("-")
   ? "update-beta.json"
   : "update.json";
 
@@ -12,9 +12,18 @@ export default defineConfig({
   name: pkg.config.addonName,
   id: pkg.config.addonID,
   namespace: pkg.config.addonRef,
-  updateURL: `https://github.com/{{owner}}/{{repo}}/releases/download/release/${updateFileName}`,
+  // Host update manifests in-repo so we don't need an extra "release" manifest tag/release.
+  // Stable: updates/update.json, Test: updates/update-beta.json
+  updateURL: `https://raw.githubusercontent.com/{{owner}}/{{repo}}/main/updates/${updateFileName}`,
   xpiDownloadLink:
     "https://github.com/{{owner}}/{{repo}}/releases/download/v{{version}}/{{xpiName}}.xpi",
+
+  release: {
+    github: {
+      // We manage update manifests as committed files under /updates.
+      updater: false,
+    },
+  },
 
   build: {
     assets: ["addon/**/*.*"],

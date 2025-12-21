@@ -97,24 +97,23 @@ npm run build
 
 #### 工作原理
 
-1. **两个更新清单**：
-   - `update.json` - 仅包含稳定版本（例如：`0.2.4`、`0.2.5`）
-   - `update-beta.json` - 仅包含测试/RC 版本（例如：`0.2.5-beta.1`、`0.2.5-rc.1`）
+1. **两个更新清单（托管在仓库中）**：
+   - `updates/update.json` - 稳定通道（只包含稳定版本，仅保留最新一个）
+   - `updates/update-beta.json` - 测试通道（只包含预发布版本如 beta/rc，仅保留最新一个）
 
-2. **版本专属的 `update_url`**：
-   - **稳定版构建**（如 `0.2.4`）：`update_url` → `update.json`
-   - **测试版构建**（如 `0.2.5-beta.1`）：`update_url` → `update-beta.json`
-   - 这个 URL 被嵌入在 `.xpi` 文件的 `manifest.json` 中
+2. **版本专属的 `update_url`（写入 `.xpi`）**：
+   - **稳定版构建**（如 `0.2.4`）：`https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update.json`
+   - **测试版构建**（如 `0.2.5-beta.1`）：`https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update-beta.json`
 
 3. **Zotero 如何检查更新**：
    - Zotero 定期从**已安装插件**的 `update_url` 获取更新信息
-   - 如果你安装了**稳定版** `.xpi`，Zotero 只会检查 `update.json` → 只看到稳定版本
-   - 如果你安装了**测试版** `.xpi`，Zotero 只会检查 `update-beta.json` → 只看到测试版本
+   - 如果你安装了**稳定版** `.xpi`，Zotero 只会检查 `updates/update.json`（仅稳定版本）
+   - 如果你安装了**测试版** `.xpi`，Zotero 只会检查 `updates/update-beta.json`（仅测试版本）
 
 #### 通道隔离保证
 
-- ✅ **稳定版用户永远看不到测试版更新**（因为 `update.json` 永远不包含测试版本）
-- ✅ **测试版用户永远看不到稳定版更新**（因为 `update-beta.json` 永远不包含稳定版本）
+- ✅ **稳定版用户永远看不到测试版更新**（因为 `updates/update.json` 永远不包含预发布版本）
+- ✅ **测试版用户永远看不到稳定版更新**（因为 `updates/update-beta.json` 永远不包含稳定版本）
 - ✅ **通道完全隔离**，这是设计保证的
 
 #### 如何切换通道
@@ -126,10 +125,21 @@ npm run build
 
 #### 发布规则
 
-- **发布测试版时**：只更新 `update-beta.json`（不要改动 `update.json`）
-- **发布稳定版时**：只更新 `update.json`（不要改动 `update-beta.json`）
-- **测试版发布设置**：必须在 GitHub 上标记为"pre-release"（预发布）
-- **稳定版发布设置**：不能在 GitHub 上标记为"pre-release"
+- **版本命名**：
+  - 稳定版：`X.Y.Z`
+  - 测试版：`X.Y.Z-beta.N` / `X.Y.Z-rc.N`（任意包含 `-` 的预发布版本都会走测试通道）
+- **Tag 命名**：
+  - 稳定版：`vX.Y.Z`
+  - 测试版：`vX.Y.Z-beta.N` / `vX.Y.Z-rc.N`
+- **更新清单更新（CI 自动完成）**：
+  - 发布**测试版**：只覆盖 `updates/update-beta.json`
+  - 发布**稳定版**：只覆盖 `updates/update.json`
+- **GitHub Release 设置**：
+  - 测试版必须标记为"pre-release"（预发布）
+  - 稳定版不能标记为"pre-release"
+- **保留策略**：GitHub Actions 会自动只保留最新的稳定版 Release 和最新的预发布 Release（旧版本会被自动删除）。
+
+> 迁移提示：旧版 `.xpi` 可能仍然使用历史的 `.../releases/download/release/update*.json` 地址。等历史清单不再维护后，这些旧版将无法继续自动更新；请手动安装一次新版 `.xpi` 以迁移到仓库内 `updates/` 清单。
 
 ### 发布 Beta 版本
 
@@ -164,6 +174,8 @@ git push origin v0.2.2-beta.1
 # - 构建项目
 # - 创建 GitHub Release（标记为预发布）
 # - 上传 .xpi 文件
+# - 更新 `main` 分支上的 `updates/update-beta.json`（测试通道）
+# - 清理旧的 Releases（仅保留最新稳定版 + 最新预发布）
 ```
 
 ### 发布正式版本
@@ -198,6 +210,8 @@ git push origin v0.2.2
 # - 构建项目
 # - 创建 GitHub Release（稳定版）
 # - 上传 .xpi 文件
+# - 更新 `main` 分支上的 `updates/update.json`（稳定通道）
+# - 清理旧的 Releases（仅保留最新稳定版 + 最新预发布）
 ```
 
 ### 手动发布（不使用 GitHub Actions）
@@ -212,6 +226,15 @@ git tag v0.2.2-beta.1
 
 # 3. 手动创建 release
 npm run release
+
+# 4. 更新仓库内更新清单（任选其一）
+# - 稳定通道（X.Y.Z）：
+cp .scaffold/build/update.json updates/update.json
+# - 测试通道（X.Y.Z-beta.N / X.Y.Z-rc.N）：
+cp .scaffold/build/update-beta.json updates/update-beta.json
+git add updates/update*.json
+git commit -m "chore: update update manifest"
+git push origin main
 
 # 或通过 GitHub 网页界面创建 release：
 # - 访问：https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/new
@@ -234,7 +257,9 @@ npm run release
 2. 运行 `npm run build`
 3. 运行 `npm run release` 创建 GitHub Release
 4. 自动上传 `.xpi` 文件
-5. 在相关 issue/PR 上添加发布通知
+5. 将对应通道的更新清单提交到 `main` 的 `updates/`
+6. 清理旧的 Releases（仅保留最新稳定版 + 最新预发布）
+7. 在相关 issue/PR 上添加发布通知
 
 查看发布状态：https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
 
