@@ -5,24 +5,35 @@
 
 [English](./README.md)
 
-一个 Zotero 7 插件，使用 Gemini AI 为 PDF 论文生成结构化摘要。每个 PDF 都会生成独立的摘要笔记，支持表格、列表、标题、代码块等 Markdown 渲染。
+一个 Zotero 7 插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native** 和 **OpenAI Compatible** 两套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
 
 ## 功能特点
 
-- **AI 摘要生成**：右键 → "ZoteroTLDR: AI 总结"，一键生成结构化摘要
-- **独立处理每个 PDF**：一个条目有多个 PDF 时，每个 PDF 生成独立的笔记
-- **Gemini 集成**：通过 OpenAI 兼容代理（如 x666.me）调用 Gemini API
-- **思考模式**：支持 Gemini 的思考/推理能力
-- **PDF 过滤**：支持按文件名过滤，使用 glob 模式（支持 AND/OR/NOT）
-- **批量处理**：支持多选条目并发处理
-- **Markdown 渲染**：完整支持表格、列表、标题、代码块
-- **自定义提示词**：支持 `{title}`、`{abstract}`、`{content}`、`{fileName}` 变量
+- **AI 摘要生成**：右键 → "ZoteroTLDR: AI 总结"，一键生成结构化摘要。
+- **双 Provider 配置**：Gemini Native 与 OpenAI Compatible 参数互不覆盖，便于快速切换。
+- **远端 PDF 上传**：Gemini Native 使用 Gemini `inlineData`；OpenAI Compatible 使用 chat-time `input_file` 上传，适配 ds2api/cliproxyapi 链路。
+- **流式思考与输出**：Provider 支持时，思考/推理内容和最终正文会分流显示。
+- **独立处理每个 PDF**：一个条目有多个 PDF 时，每个 PDF 生成独立笔记。
+- **PDF 过滤**：支持按文件名过滤，使用 glob 模式（支持 AND/OR/NOT）。
+- **批量处理**：支持多选条目并发处理，并使用 Provider 独立并发与速率限制。
+- **Markdown 渲染**：完整支持表格、列表、标题、代码块。
+- **自定义提示词**：支持 `{title}`、`{abstract}`、`{content}`、`{fileName}` 变量。
 
 ## 安装
 
 1. 从 Releases 下载最新 `.xpi` 文件
 2. Zotero → 工具 → 附加组件 → ⚙️ → 从文件安装…
-3. 选择 `hanchens-zotero-tldr.xpi` 并重启 Zotero
+3. 选择 `hanchen-s-zotero-tldr.xpi` 并重启 Zotero
+
+## 自动更新
+
+稳定版构建会在 XPI 中写入这个 Zotero 更新地址：
+
+```text
+https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
+```
+
+`v0.3.0` 发布到 GitHub 且 `updates/update.json` 提交后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次 `v0.3.0`，之后就会迁移到仓库内更新清单。
 
 ## 快速开始
 
@@ -34,20 +45,26 @@
 
 **Zotero → 编辑 → 设置 → Hanchen's Zotero TLDR**
 
-| 设置项       | 说明                     | 默认值                     |
-| ------------ | ------------------------ | -------------------------- |
-| API Base URL | OpenAI 兼容接口地址      | `https://x666.me/v1`       |
-| API Key      | API 密钥                 | (空)                       |
-| 模型         | 模型名称                 | `gemini-2.5-pro-1m`        |
-| 温度         | 创造性 (0-2)             | `0.2`                      |
-| 启用思考模式 | 使用 Gemini 思考功能     | `true`                     |
-| 思考预算     | Token 限制 (-1=动态)     | `-1`                       |
-| 并发数       | 并行处理数量             | `1`                        |
-| 最大字符数   | 每个 PDF 最大提取字符    | `800000`                   |
-| 速率限制     | 时间窗口内最大请求数     | `20`                       |
-| 时间窗口     | 速率限制时间窗口（分钟） | `5`                        |
-| PDF 过滤     | 文件名过滤规则           | `!*-mono.pdf, !*-dual.pdf` |
-| 提示词模板   | 自定义提示词             | (详细模板)                 |
+### Provider 默认参数
+
+| 设置项         | Gemini Native                  | OpenAI Compatible                      |
+| -------------- | ------------------------------ | -------------------------------------- |
+| API Base URL   | `https://x666.me/v1`           | `https://cpa.20020519.xyz/v1`          |
+| 模型           | `gemini-2.5-pro-1m`            | `ds2api-openai/deepseek-v4-pro-search` |
+| PDF 解析模式   | 远端上传                       | 远端上传                               |
+| 远端 PDF 上传  | Gemini `inlineData`            | Chat `input_file` 内联上传             |
+| 温度           | `0.2`                          | `0.2`                                  |
+| 最大输出 Token | `65536`                        | `1000000`                              |
+| 启用思考模式   | `true`                         | `true`                                 |
+| 思考预算       | `-1`                           | `-1`                                   |
+| 并发数         | `1`                            | `5`                                    |
+| 最大字符数     | `800000`                       | `1000000`                              |
+| 速率限制       | `20` 次 / `5` 分钟             | `100` 次 / `1` 分钟                    |
+| 最大文件大小   | `25 MB`                        | `80 MB`                                |
+| 最大页数       | `50`                           | `50`                                   |
+| PDF 过滤       | `!* - mono.pdf, !* - dual.pdf` | `!* - mono.pdf, !* - dual.pdf`         |
+
+设置界面只显示当前启用 Provider 的相关配置。
 
 ## PDF 过滤语法
 
@@ -81,7 +98,7 @@ npm start
 npm run build
 ```
 
-输出：`.scaffold/build/hanchens-zotero-tldr.xpi`
+输出：`.scaffold/build/hanchen-s-zotero-tldr.xpi`
 
 ## 发布流程
 
@@ -102,8 +119,8 @@ npm run build
    - `updates/update-beta.json` - 测试通道（只包含预发布版本如 beta/rc，仅保留最新一个）
 
 2. **版本专属的 `update_url`（写入 `.xpi`）**：
-   - **稳定版构建**（如 `0.2.4`）：`https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update.json`
-   - **测试版构建**（如 `0.2.5-beta.1`）：`https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update-beta.json`
+   - **稳定版构建**（如 `0.3.0`）：`https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update.json`
+   - **测试版构建**（如 `0.3.1-beta.1`）：`https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update-beta.json`
 
 3. **Zotero 如何检查更新**：
    - Zotero 定期从**已安装插件**的 `update_url` 获取更新信息
@@ -118,8 +135,8 @@ npm run build
 
 #### 如何切换通道
 
-1. **从稳定版 → 测试版**：下载并安装测试版 `.xpi`（如 `v0.2.5-beta.1`）
-2. **从测试版 → 稳定版**：下载并安装稳定版 `.xpi`（如 `v0.2.4`）
+1. **从稳定版 → 测试版**：下载并安装测试版 `.xpi`（如 `v0.3.1-beta.1`）
+2. **从测试版 → 稳定版**：下载并安装稳定版 `.xpi`（如 `v0.3.0`）
 
 一旦安装了新的 `.xpi`，Zotero 将使用该构建版本内置的 `update_url` 进行所有后续更新检查。
 
@@ -137,7 +154,7 @@ npm run build
 - **GitHub Release 设置**：
   - 测试版必须标记为"pre-release"（预发布）
   - 稳定版不能标记为"pre-release"
-- **保留策略**：GitHub Actions 会自动只保留最新的稳定版 Release 和最新的预发布 Release（旧版本会被自动删除）。
+- **保留策略**：GitHub Releases 会保留历史版本；如需清理旧版本，请手动删除。
 
 > 迁移提示：旧版 `.xpi` 可能仍然使用历史的 `.../releases/download/release/update*.json` 地址。等历史清单不再维护后，这些旧版将无法继续自动更新；请手动安装一次新版 `.xpi` 以迁移到仓库内 `updates/` 清单。
 
@@ -147,11 +164,11 @@ Beta 版本用于预发布测试和早期反馈。
 
 ```bash
 # 1. 更新版本号为 beta（如果还没更新）
-# 编辑 package.json: "version": "0.2.2-beta.1"
+# 编辑 package.json: "version": "0.3.1-beta.1"
 
 # 2. 清理并暂存必要的改动
 git status
-git add package.json package-lock.json src/
+git add package.json package-lock.json README.md README-zhCN.md .github/workflows/release.yml addon/ src/ typings/
 # 如有需要，删除构建产物
 rm -rf release-*/
 
@@ -166,16 +183,15 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 npm run build
 
 # 5. 创建并推送 git tag
-git tag v0.2.2-beta.1
+git tag v0.3.1-beta.1
 git push origin main
-git push origin v0.2.2-beta.1
+git push origin v0.3.1-beta.1
 
 # GitHub Actions 将自动：
 # - 构建项目
 # - 创建 GitHub Release（标记为预发布）
 # - 上传 .xpi 文件
-# - 更新 `main` 分支上的 `updates/update-beta.json`（测试通道）
-# - 清理旧的 Releases（仅保留最新稳定版 + 最新预发布）
+# - 更新 `updates/update-beta.json`，让已安装的 beta 版自动更新
 ```
 
 ### 发布正式版本
@@ -184,15 +200,15 @@ git push origin v0.2.2-beta.1
 
 ```bash
 # 1. 更新版本号为正式版
-# 编辑 package.json: "version": "0.2.2"
+# 编辑 package.json: "version": "0.3.0"
 
 # 2. 清理并暂存改动
 git status
-git add package.json package-lock.json src/
+git add package.json package-lock.json README.md README-zhCN.md .github/workflows/release.yml addon/ src/ typings/
 rm -rf release-*/
 
 # 3. 提交改动
-git commit -m "chore(release): v0.2.2
+git commit -m "chore(release): v0.3.0
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -202,16 +218,15 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 npm run build
 
 # 5. 创建并推送 git tag（不带 -beta 后缀）
-git tag v0.2.2
+git tag v0.3.0
 git push origin main
-git push origin v0.2.2
+git push origin v0.3.0
 
 # GitHub Actions 将自动：
 # - 构建项目
 # - 创建 GitHub Release（稳定版）
 # - 上传 .xpi 文件
-# - 更新 `main` 分支上的 `updates/update.json`（稳定通道）
-# - 清理旧的 Releases（仅保留最新稳定版 + 最新预发布）
+# - 更新 `updates/update.json`，让已安装的稳定版自动更新
 ```
 
 ### 手动发布（不使用 GitHub Actions）
@@ -222,7 +237,7 @@ git push origin v0.2.2
 # 1. 确保 package.json 中的版本号已更新
 # 2. 构建并创建 tag
 npm run build
-git tag v0.2.2-beta.1
+git tag v0.3.0
 
 # 3. 手动创建 release
 npm run release
@@ -238,27 +253,27 @@ git push origin main
 
 # 或通过 GitHub 网页界面创建 release：
 # - 访问：https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/new
-# - 选择 tag：v0.2.2-beta.1
-# - 上传文件：.scaffold/build/hanchens-zotero-tldr.xpi
-# - Beta 版本勾选"Set as a pre-release"
+# - 选择 tag：v0.3.0
+# - 上传文件：.scaffold/build/hanchen-s-zotero-tldr.xpi
+# - 稳定版不要勾选 "Set as a pre-release"
 ```
 
 ### 版本命名规范
 
-- **Beta/预发布版**：`0.2.2-beta.1`、`0.2.2-beta.2` 等
-- **正式版**：`0.2.2`、`0.3.0`、`1.0.0` 等
-- **候选版本**：`0.2.2-rc.1`（可选）
+- **Beta/预发布版**：`0.3.1-beta.1`、`0.3.1-beta.2` 等
+- **正式版**：`0.3.0`、`0.3.1`、`1.0.0` 等
+- **候选版本**：`0.3.1-rc.1`（可选）
 
 ### 自动发布工作流
 
 项目使用 GitHub Actions（`.github/workflows/release.yml`），在推送任何 `v*` 格式的 tag 时触发：
 
 1. 检出代码并安装依赖
-2. 运行 `npm run build`
-3. 运行 `npm run release` 创建 GitHub Release
-4. 自动上传 `.xpi` 文件
-5. 将对应通道的更新清单提交到 `main` 的 `updates/`
-6. 清理旧的 Releases（仅保留最新稳定版 + 最新预发布）
+2. 校验推送的 tag 与 `package.json` 匹配（例如 tag `v0.3.0` 要求版本号为 `0.3.0`）
+3. 运行 `npm run build`
+4. 运行 `npm run release` 创建 GitHub Release
+5. 自动上传 `.xpi` 文件
+6. 将对应通道的更新清单提交到 `main` 的 `updates/`
 7. 在相关 issue/PR 上添加发布通知
 
 查看发布状态：https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
@@ -360,11 +375,12 @@ async function onStartup() {
 
 ### 524 超时应对
 
-当使用 OpenAI 兼容代理（例如走 Cloudflare）进行**远端 PDF 解析**时，长响应可能触发 **524（超时）**。本项目针对 524 主要采用了两种策略：
+当使用代理/网关（例如走 Cloudflare）进行**远端 PDF 解析**时，长响应可能触发 **524（超时）**。本项目主要通过流式输出来减少 524，并让长任务可观察：
 
 1. **流式输出（SSE）作为“保活”与进度输出**
-   - 远端 PDF 模式改用 Gemini 原生流式接口：`:streamGenerateContent?alt=sse`
-   - 通过 `ReadableStream` 逐行解析 `data: {...json...}`（`src/llm/providers.ts` → `summarizeWithRemotePdf()` / `parseSSEResponse()`）
+   - Gemini Native 远端 PDF 模式使用 Gemini 流式接口：`:streamGenerateContent?alt=sse`
+   - OpenAI Compatible 远端 PDF 模式使用 `/chat/completions` 且设置 `stream: true`
+   - 通过 `ReadableStream` 逐行解析 `data: {...json...}`（`src/llm/providers.ts`）
    - 把每个 chunk 通过 `onStreamChunk(chunk, isThought)` 回传，任务队列面板可实时更新
 
 2. **展示实时“思考/推理”片段（进度 + 调试）**

@@ -1,4 +1,4 @@
-import { getPref, type AddonPrefs } from "../utils/prefs";
+import type { AddonPrefs } from "../utils/prefs";
 
 export interface SummarizeOptions {
   title: string;
@@ -15,6 +15,7 @@ export interface RemotePdfSummarizeOptions {
   title: string;
   abstract?: string;
   pdfBase64: string; // PDF 文件的 base64 编码
+  fileName?: string;
   prompt: string;
   prefs: AddonPrefs;
   onStreamChunk?: (chunk: string, isThought: boolean) => void; // 流式输出回调
@@ -25,12 +26,18 @@ export interface SummarizeResult {
   thoughtsMarkdown?: string;
 }
 
-function getApiKey(): string {
-  const key = (getPref("apiKey") as string) || "";
+function getApiKey(prefs: AddonPrefs): string {
+  const key = prefs.apiKey || "";
   if (!key) {
-    throw new Error("未配置 API Key，请在偏好设置中填写。");
+    throw new Error(
+      `未配置 ${prefs.providerLabel} API Key，请在偏好设置中填写。`,
+    );
   }
   return key;
+}
+
+function getChatCompletionsUrl(prefs: AddonPrefs): string {
+  return `${prefs.apiBase.replace(/\/$/, "")}/chat/completions`;
 }
 
 /**
@@ -41,7 +48,7 @@ export async function summarize(
   opts: SummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt } = opts;
-  const url = `${prefs.apiBase.replace(/\/$/, "")}/chat/completions`;
+  const url = getChatCompletionsUrl(prefs);
 
   const body: Record<string, unknown> = {
     model: prefs.model,
@@ -65,7 +72,7 @@ export async function summarize(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getApiKey(prefs)}`,
     },
     body: JSON.stringify(body),
   });
@@ -91,7 +98,7 @@ export async function summarize(
  * 测试 API 连接
  */
 export async function testAPI(prefs: AddonPrefs): Promise<string> {
-  const url = `${prefs.apiBase.replace(/\/$/, "")}/chat/completions`;
+  const url = getChatCompletionsUrl(prefs);
 
   const body = {
     model: prefs.model,
@@ -104,7 +111,7 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getApiKey(prefs)}`,
     },
     body: JSON.stringify(body),
   });
@@ -131,6 +138,16 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
  * 使用流式响应避免 Cloudflare 超时
  */
 export async function summarizeWithRemotePdf(
+  opts: RemotePdfSummarizeOptions,
+): Promise<SummarizeResult> {
+  if (opts.prefs.provider === "openai-compatible") {
+    return summarizeWithOpenAICompatibleRemotePdf(opts);
+  }
+
+  return summarizeWithGeminiRemotePdf(opts);
+}
+
+async function summarizeWithGeminiRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt, pdfBase64, onStreamChunk } = opts;
@@ -175,8 +192,8 @@ export async function summarizeWithRemotePdf(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
-      "x-goog-api-key": getApiKey(),
+      Authorization: `Bearer ${getApiKey(prefs)}`,
+      "x-goog-api-key": getApiKey(prefs),
     },
     body: JSON.stringify(body),
   });
@@ -229,8 +246,8 @@ export async function summarizeWithGeminiTextStream(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
-      "x-goog-api-key": getApiKey(),
+      Authorization: `Bearer ${getApiKey(prefs)}`,
+      "x-goog-api-key": getApiKey(prefs),
     },
     body: JSON.stringify(body),
   });
@@ -243,6 +260,262 @@ export async function summarizeWithGeminiTextStream(
   }
 
   return await parseSSEResponse(res, onStreamChunk);
+}
+
+export async function summarizeWithTextStream(
+  opts: SummarizeOptions & {
+    onStreamChunk?: (chunk: string, isThought: boolean) => void;
+  },
+): Promise<SummarizeResult> {
+  if (opts.prefs.provider === "openai-compatible") {
+    return summarizeWithOpenAICompatibleTextStream(opts);
+  }
+  return summarizeWithGeminiTextStream(opts);
+}
+
+function applyOpenAICompatibleThinkingConfig(
+  body: Record<string, unknown>,
+  prefs: AddonPrefs,
+): void {
+  if (!prefs.enableThoughts) return;
+
+  const thinking: Record<string, unknown> = { type: "enabled" };
+  if (prefs.thinkingBudget > 0) {
+    thinking.budget_tokens = prefs.thinkingBudget;
+  }
+
+  body.extra_body = { thinking };
+}
+
+async function summarizeWithOpenAICompatibleRemotePdf(
+  opts: RemotePdfSummarizeOptions,
+): Promise<SummarizeResult> {
+  const { prefs, prompt, pdfBase64, fileName, onStreamChunk } = opts;
+  const safeFileName = fileName || "document.pdf";
+  const content = [
+    {
+      type: "text",
+      text: [
+        prompt,
+        "",
+        "# 文件清单",
+        `以下 PDF 已作为同一条 chat 请求中的 input_file 附件提交，请优先读取附件原文：${safeFileName}`,
+      ].join("\n"),
+    },
+    {
+      type: "input_file",
+      filename: safeFileName,
+      mime_type: "application/pdf",
+      file_data: pdfBase64,
+    },
+  ];
+
+  return streamOpenAICompatibleChat({
+    prefs,
+    messages: [
+      { role: "system", content: "You are an academic assistant." },
+      { role: "user", content },
+    ],
+    onStreamChunk,
+    errorPrefix: "OpenAI Compatible 远端 PDF 解析失败",
+  });
+}
+
+async function summarizeWithOpenAICompatibleTextStream(
+  opts: SummarizeOptions & {
+    onStreamChunk?: (chunk: string, isThought: boolean) => void;
+  },
+): Promise<SummarizeResult> {
+  const { prefs, prompt, onStreamChunk } = opts;
+  return streamOpenAICompatibleChat({
+    prefs,
+    messages: [
+      { role: "system", content: "You are an academic assistant." },
+      { role: "user", content: prompt },
+    ],
+    onStreamChunk,
+    errorPrefix: "OpenAI Compatible 本地解析失败",
+  });
+}
+
+async function streamOpenAICompatibleChat(opts: {
+  prefs: AddonPrefs;
+  messages: Array<Record<string, unknown>>;
+  extraBody?: Record<string, unknown>;
+  extraHeaders?: Record<string, string>;
+  onStreamChunk?: (chunk: string, isThought: boolean) => void;
+  errorPrefix: string;
+}): Promise<SummarizeResult> {
+  const {
+    prefs,
+    messages,
+    extraBody,
+    extraHeaders,
+    onStreamChunk,
+    errorPrefix,
+  } = opts;
+  const body: Record<string, unknown> = {
+    model: prefs.model,
+    messages,
+    temperature: prefs.temperature ?? 0.2,
+    max_tokens: prefs.maxOutputTokens,
+    stream: true,
+  };
+
+  applyOpenAICompatibleThinkingConfig(body, prefs);
+  Object.assign(body, extraBody);
+
+  const res = await fetch(getChatCompletionsUrl(prefs), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getApiKey(prefs)}`,
+      ...extraHeaders,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(
+      `${errorPrefix}: ${res.status} ${errorText.substring(0, 500)}`,
+    );
+  }
+
+  return parseOpenAICompatibleStreamResponse(res, onStreamChunk);
+}
+
+function extractTextLike(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (typeof part?.text === "string") return part.text;
+        return "";
+      })
+      .join("");
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    typeof (value as any).text === "string"
+  ) {
+    return (value as any).text;
+  }
+  return "";
+}
+
+function extractReasoningChunk(delta: Record<string, unknown>): string {
+  return (
+    extractTextLike(delta.reasoning_content) ||
+    extractTextLike(delta.reasoning) ||
+    extractTextLike(delta.thinking) ||
+    extractTextLike(delta.thought)
+  );
+}
+
+async function parseOpenAICompatibleStreamResponse(
+  res: Response,
+  onStreamChunk?: (chunk: string, isThought: boolean) => void,
+): Promise<SummarizeResult> {
+  const reader = res.body?.getReader() as
+    | ReadableStreamDefaultReader<Uint8Array>
+    | undefined;
+  if (!reader) {
+    const text = await res.text();
+    return parseOpenAICompatibleSingleResponse(text, onStreamChunk);
+  }
+
+  let markdown = "";
+  let thoughtsMarkdown = "";
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const result = await (reader as any).read();
+      const { done, value } = result as { done: boolean; value?: Uint8Array };
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line.startsWith("data:")) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr || jsonStr === "[DONE]") continue;
+
+        try {
+          const data = JSON.parse(jsonStr);
+          const delta =
+            data.choices?.[0]?.delta ?? data.choices?.[0]?.message ?? {};
+          const thoughtChunk = extractReasoningChunk(delta);
+          const contentChunk = extractTextLike(delta.content);
+
+          if (thoughtChunk) {
+            thoughtsMarkdown += thoughtChunk;
+            onStreamChunk?.(thoughtChunk, true);
+          }
+          if (contentChunk) {
+            markdown += contentChunk;
+            onStreamChunk?.(contentChunk, false);
+          }
+        } catch (_e) {
+          continue;
+        }
+      }
+    }
+
+    if (buffer.trim().startsWith("data:")) {
+      const jsonStr = buffer.trim().slice(5).trim();
+      if (jsonStr && jsonStr !== "[DONE]") {
+        try {
+          const data = JSON.parse(jsonStr);
+          const delta =
+            data.choices?.[0]?.delta ?? data.choices?.[0]?.message ?? {};
+          const thoughtChunk = extractReasoningChunk(delta);
+          const contentChunk = extractTextLike(delta.content);
+          if (thoughtChunk) {
+            thoughtsMarkdown += thoughtChunk;
+            onStreamChunk?.(thoughtChunk, true);
+          }
+          if (contentChunk) {
+            markdown += contentChunk;
+            onStreamChunk?.(contentChunk, false);
+          }
+        } catch (_e) {
+          // ignore trailing partial chunk
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return {
+    markdown: markdown.trim(),
+    thoughtsMarkdown: thoughtsMarkdown.trim() || undefined,
+  };
+}
+
+function parseOpenAICompatibleSingleResponse(
+  text: string,
+  onStreamChunk?: (chunk: string, isThought: boolean) => void,
+): SummarizeResult {
+  try {
+    const data = JSON.parse(text);
+    const message = data.choices?.[0]?.message ?? {};
+    const thoughtsMarkdown = extractReasoningChunk(message).trim();
+    const markdown = extractTextLike(message.content).trim();
+    if (thoughtsMarkdown) onStreamChunk?.(thoughtsMarkdown, true);
+    if (markdown) onStreamChunk?.(markdown, false);
+    return { markdown, thoughtsMarkdown: thoughtsMarkdown || undefined };
+  } catch (_e) {
+    return { markdown: "", thoughtsMarkdown: undefined };
+  }
 }
 
 /**

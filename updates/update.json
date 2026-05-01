@@ -1,7 +1,19 @@
 {
   "addons": {
     "hanchens-zotero-tldr@local": {
-      "updates": []
+      "updates": [
+        {
+          "version": "0.3.0",
+          "update_link": "https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/download/v0.3.0/hanchen-s-zotero-tldr.xpi",
+          "update_hash": "sha512:c3c23318ecf6d24a419e2bf48742454962ae75594bb70a5cd100c41f3dd00c87d15491aae2bfcb170cf1590acd7d19c63430541216d620df8093c9f039496289",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "6.999",
+              "strict_max_version": "8.*"
+            }
+          }
+        }
+      ]
     }
   }
 }

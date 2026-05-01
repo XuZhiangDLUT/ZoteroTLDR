@@ -1,8 +1,8 @@
 import { marked } from "marked";
 import { getPrefs, type AddonPrefs } from "../utils/prefs";
 import {
-  summarizeWithGeminiTextStream,
   summarizeWithRemotePdf,
+  summarizeWithTextStream,
   testAPI,
   type SummarizeResult,
 } from "../llm/providers";
@@ -904,9 +904,10 @@ async function saveChildNote(
   const nowStr = new Date().toLocaleString();
 
   const title = item.getDisplayTitle?.() ?? "";
+  const providerLabel = prefs.providerLabel || "AI";
   const headerTitle = pdfFileName
-    ? `[AI 摘要] ${title} - ${pdfFileName} (${prefs.model} @ ${nowStr})`
-    : `[AI 摘要] ${title} (${prefs.model} @ ${nowStr})`;
+    ? `[AI 摘要] ${title} - ${pdfFileName} (${providerLabel} / ${prefs.model} @ ${nowStr})`
+    : `[AI 摘要] ${title} (${providerLabel} / ${prefs.model} @ ${nowStr})`;
   const headerHtml = `<p><b>${escapeHtml(headerTitle)}</b></p><hr>`;
 
   note.parentID = item.id;
@@ -966,6 +967,7 @@ async function summarizeSinglePdf(
         title,
         abstract,
         pdfBase64,
+        fileName: attachment.fileName,
         prompt,
         prefs,
         onStreamChunk,
@@ -1013,7 +1015,7 @@ async function summarizeSinglePdf(
           fileName: attachment.fileName,
         });
 
-        result = await summarizeWithGeminiTextStream({
+        result = await summarizeWithTextStream({
           title,
           abstract,
           content: localText,
@@ -1040,7 +1042,7 @@ async function summarizeSinglePdf(
       fileName: attachment.fileName,
     });
 
-    result = await summarizeWithGeminiTextStream({
+    result = await summarizeWithTextStream({
       title,
       abstract,
       content: attachment.text,
@@ -2240,19 +2242,17 @@ export class AISummaryModule {
     const selectedItems = pane.getSelectedItems() as Zotero.Item[];
 
     if (selectedItems.length !== 1) {
-      ztoolkit
-        .getGlobal("alert")(
-          "请仅选择一个父条目下的 PDF 附件再执行“ZoteroTLDR: AI 总结（无过滤）”。",
-        );
+      ztoolkit.getGlobal("alert")(
+        "请仅选择一个父条目下的 PDF 附件再执行“ZoteroTLDR: AI 总结（无过滤）”。",
+      );
       return;
     }
 
     const attachment = selectedItems[0];
     if (!attachment.isAttachment?.() || !attachment.isAttachment()) {
-      ztoolkit
-        .getGlobal("alert")(
-          "请选择父条目下的 PDF 附件（只能单选附件，不能选择父条目本身）。",
-        );
+      ztoolkit.getGlobal("alert")(
+        "请选择父条目下的 PDF 附件（只能单选附件，不能选择父条目本身）。",
+      );
       return;
     }
 
@@ -2261,10 +2261,9 @@ export class AISummaryModule {
       ? (Zotero.Items.get(parentID) as Zotero.Item | undefined)
       : null;
     if (!parent || !parent.isRegularItem?.() || !parent.isRegularItem()) {
-      ztoolkit
-        .getGlobal("alert")(
-          "请选择父条目下的 PDF 附件（必须有父条目且为常规条目）。",
-        );
+      ztoolkit.getGlobal("alert")(
+        "请选择父条目下的 PDF 附件（必须有父条目且为常规条目）。",
+      );
       return;
     }
 
@@ -2272,9 +2271,10 @@ export class AISummaryModule {
       (attachment.getField?.("contentType") as string) ||
       ((attachment as any).attachmentContentType as string | undefined) ||
       "";
-    const getFilePath = (attachment as any).getFilePath || attachment.getFilePath;
+    const getFilePath =
+      (attachment as any).getFilePath || attachment.getFilePath;
     const filePath = getFilePath ? getFilePath.call(attachment) : "";
-    const fileName = filePath ? filePath.split(/[/\\]/).pop() ?? "" : "";
+    const fileName = filePath ? (filePath.split(/[/\\]/).pop() ?? "") : "";
     const isPdf =
       contentType.includes("application/pdf") ||
       fileName.toLowerCase().endsWith(".pdf");
@@ -2313,18 +2313,16 @@ export class AISummaryModule {
               : fullText;
         }
       } catch (_e) {
-        ztoolkit
-          .getGlobal("alert")(
-            "本地解析模式下无法提取文本，请确保该附件已被索引或切换到远端解析。",
-          );
+        ztoolkit.getGlobal("alert")(
+          "本地解析模式下无法提取文本，请确保该附件已被索引或切换到远端解析。",
+        );
         return;
       }
 
       if (!text) {
-        ztoolkit
-          .getGlobal("alert")(
-            "本地解析模式下未获取到文本，请确保已完成全文索引或切换到远端解析。",
-          );
+        ztoolkit.getGlobal("alert")(
+          "本地解析模式下未获取到文本，请确保已完成全文索引或切换到远端解析。",
+        );
         return;
       }
     }

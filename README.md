@@ -5,24 +5,35 @@
 
 [简体中文](./README-zhCN.md)
 
-A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your PDF papers. Each PDF gets its own summary note with rich Markdown rendering (tables, lists, headings, code blocks).
+A Zotero 7 plugin that generates structured AI summaries for PDF papers. It supports two provider profiles, **Gemini Native** and **OpenAI Compatible**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
 
 ## Features
 
-- **AI Summarization**: Right-click → "ZoteroTLDR: AI 总结" to generate structured summaries
-- **Per-PDF Processing**: Each PDF in an item generates its own separate note
-- **Gemini Integration**: Uses Gemini API via OpenAI-compatible proxy (e.g., x666.me)
-- **Thinking Mode**: Supports Gemini's thinking/reasoning capabilities
-- **PDF Filtering**: Filter PDFs by filename with glob patterns (supports AND/OR/NOT)
-- **Batch Processing**: Process multiple items concurrently
-- **Markdown Rendering**: Full support for tables, lists, headings, code blocks
-- **Customizable Prompts**: Use `{title}`, `{abstract}`, `{content}`, `{fileName}` variables
+- **AI Summarization**: Right-click → "ZoteroTLDR: AI 总结" to generate structured summaries.
+- **Two Provider Profiles**: Switch between Gemini Native and OpenAI Compatible without overwriting each profile's defaults.
+- **Remote PDF Upload**: Gemini Native uses Gemini `inlineData`; OpenAI Compatible uses chat-time `input_file` upload for ds2api/cliproxyapi-style gateways.
+- **Streaming Thoughts and Output**: Streams reasoning/thinking chunks separately from final content when the provider exposes them.
+- **Per-PDF Processing**: Each PDF in an item generates its own separate note.
+- **PDF Filtering**: Filter PDFs by filename with glob patterns (supports AND/OR/NOT).
+- **Batch Processing**: Process multiple items concurrently with provider-specific concurrency and rate limits.
+- **Markdown Rendering**: Full support for tables, lists, headings, code blocks.
+- **Customizable Prompts**: Use `{title}`, `{abstract}`, `{content}`, `{fileName}` variables.
 
 ## Install
 
 1. Download the latest `.xpi` from Releases (or build locally)
 2. Open Zotero → Tools → Add-ons → ⚙️ → Install Add-on From File…
-3. Select `hanchens-zotero-tldr.xpi` and restart Zotero
+3. Select `hanchen-s-zotero-tldr.xpi` and restart Zotero
+
+## Auto Updates
+
+Stable builds embed this Zotero update URL:
+
+```text
+https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
+```
+
+After `v0.3.0` is released on GitHub and `updates/update.json` is committed, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install `v0.3.0` once manually to migrate to the in-repo update manifest.
 
 ## Quick Start
 
@@ -34,20 +45,26 @@ A Zotero 7 plugin that uses Gemini AI to generate structured summaries for your 
 
 **Zotero → Edit → Settings → Hanchen's Zotero TLDR**
 
-| Setting           | Description                  | Default                    |
-| ----------------- | ---------------------------- | -------------------------- |
-| API Base URL      | OpenAI-compatible endpoint   | `https://x666.me/v1`       |
-| API Key           | Your API key                 | (empty)                    |
-| Model             | Model name                   | `gemini-2.5-pro-1m`        |
-| Temperature       | Creativity (0-2)             | `0.2`                      |
-| Enable Thinking   | Use Gemini thinking mode     | `true`                     |
-| Thinking Budget   | Token limit (-1=dynamic)     | `-1`                       |
-| Concurrency       | Parallel processing count    | `1`                        |
-| Max Characters    | Max text to extract per PDF  | `800000`                   |
-| Rate Limit        | Max requests per time window | `20`                       |
-| Rate Limit Window | Time window in minutes       | `5`                        |
-| PDF Filter        | Filename filter patterns     | `!*-mono.pdf, !*-dual.pdf` |
-| Prompt Template   | Customizable prompt          | (detailed template)        |
+### Provider Defaults
+
+| Setting           | Gemini Native                  | OpenAI Compatible                      |
+| ----------------- | ------------------------------ | -------------------------------------- |
+| API Base URL      | `https://x666.me/v1`           | `https://cpa.20020519.xyz/v1`          |
+| Model             | `gemini-2.5-pro-1m`            | `ds2api-openai/deepseek-v4-pro-search` |
+| PDF Parse Mode    | Remote upload                  | Remote upload                          |
+| Remote PDF Upload | Gemini `inlineData`            | Chat `input_file` inline upload        |
+| Temperature       | `0.2`                          | `0.2`                                  |
+| Max Output Tokens | `65536`                        | `1000000`                              |
+| Enable Thoughts   | `true`                         | `true`                                 |
+| Thinking Budget   | `-1`                           | `-1`                                   |
+| Concurrency       | `1`                            | `5`                                    |
+| Max Characters    | `800000`                       | `1000000`                              |
+| Rate Limit        | `20` per `5` minutes           | `100` per `1` minute                   |
+| Max File Size     | `25 MB`                        | `80 MB`                                |
+| Max Pages         | `50`                           | `50`                                   |
+| PDF Filter        | `!* - mono.pdf, !* - dual.pdf` | `!* - mono.pdf, !* - dual.pdf`         |
+
+Only the active provider's settings are shown in the preferences panel.
 
 ## PDF Filter Syntax
 
@@ -81,7 +98,7 @@ npm start
 npm run build
 ```
 
-Output: `.scaffold/build/hanchens-zotero-tldr.xpi`
+Output: `.scaffold/build/hanchen-s-zotero-tldr.xpi`
 
 ## Release Process
 
@@ -102,8 +119,8 @@ This plugin uses **two separate update channels** to ensure beta testers and sta
    - `updates/update-beta.json` - Test channel (only pre-releases like beta/rc, keep latest)
 
 2. **Version-Specific `update_url` (embedded in the `.xpi`)**:
-   - **Stable builds** (e.g., `0.2.4`): `https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update.json`
-   - **Test builds** (e.g., `0.2.5-beta.1`): `https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update-beta.json`
+   - **Stable builds** (e.g., `0.3.0`): `https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update.json`
+   - **Test builds** (e.g., `0.3.1-beta.1`): `https://raw.githubusercontent.com/<owner>/<repo>/main/updates/update-beta.json`
 
 3. **How Zotero Checks for Updates**:
    - Zotero periodically fetches the `update_url` from the **installed plugin**
@@ -118,8 +135,8 @@ This plugin uses **two separate update channels** to ensure beta testers and sta
 
 #### How to Switch Channels
 
-1. **From Stable → Beta**: Download and install a beta `.xpi` (e.g., `v0.2.5-beta.1`)
-2. **From Beta → Stable**: Download and install a stable `.xpi` (e.g., `v0.2.4`)
+1. **From Stable → Beta**: Download and install a beta `.xpi` (e.g., `v0.3.1-beta.1`)
+2. **From Beta → Stable**: Download and install a stable `.xpi` (e.g., `v0.3.0`)
 
 Once you install the new `.xpi`, Zotero will use that build's embedded `update_url` for all future update checks.
 
@@ -137,7 +154,7 @@ Once you install the new `.xpi`, Zotero will use that build's embedded `update_u
 - **GitHub Release settings**:
   - Test releases MUST be marked as "pre-release"
   - Stable releases MUST NOT be marked as "pre-release"
-- **Retention**: GitHub Actions keeps only the latest stable release and the latest pre-release (older ones are deleted automatically).
+- **Retention**: GitHub Releases are kept unless you delete older releases manually.
 
 > Migration note: Older `.xpi` builds may still use the legacy `.../releases/download/release/update*.json` URL. Those builds will stop auto-updating once the legacy manifest is no longer maintained. Install a newer `.xpi` once to migrate to the in-repo `updates/` manifests.
 
@@ -147,11 +164,11 @@ Use beta versions for pre-release testing and early feedback.
 
 ```bash
 # 1. Update version to beta (if not already)
-# Edit package.json: "version": "0.2.2-beta.1"
+# Edit package.json: "version": "0.3.1-beta.1"
 
 # 2. Clean up and stage necessary changes
 git status
-git add package.json package-lock.json src/
+git add package.json package-lock.json README.md README-zhCN.md .github/workflows/release.yml addon/ src/ typings/
 # Remove any build artifacts if needed
 rm -rf release-*/
 
@@ -166,16 +183,15 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 npm run build
 
 # 5. Create and push git tag
-git tag v0.2.2-beta.1
+git tag v0.3.1-beta.1
 git push origin main
-git push origin v0.2.2-beta.1
+git push origin v0.3.1-beta.1
 
 # GitHub Actions will automatically:
 # - Build the project
 # - Create GitHub Release (marked as pre-release)
 # - Upload the .xpi file
-# - Update `updates/update-beta.json` on `main` (test channel)
-# - Cleanup old releases (keeps latest stable + latest pre-release)
+# - Update `updates/update-beta.json` so installed beta builds can auto-update
 ```
 
 ### Publishing Stable Version
@@ -184,15 +200,15 @@ For stable releases ready for production use.
 
 ```bash
 # 1. Update version to stable
-# Edit package.json: "version": "0.2.2"
+# Edit package.json: "version": "0.3.0"
 
 # 2. Clean up and stage changes
 git status
-git add package.json package-lock.json src/
+git add package.json package-lock.json README.md README-zhCN.md .github/workflows/release.yml addon/ src/ typings/
 rm -rf release-*/
 
 # 3. Commit your changes
-git commit -m "chore(release): v0.2.2
+git commit -m "chore(release): v0.3.0
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -202,16 +218,15 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 npm run build
 
 # 5. Create and push git tag (without -beta suffix)
-git tag v0.2.2
+git tag v0.3.0
 git push origin main
-git push origin v0.2.2
+git push origin v0.3.0
 
 # GitHub Actions will automatically:
 # - Build the project
 # - Create GitHub Release (stable)
 # - Upload the .xpi file
-# - Update `updates/update.json` on `main` (stable channel)
-# - Cleanup old releases (keeps latest stable + latest pre-release)
+# - Update `updates/update.json` so installed stable builds can auto-update
 ```
 
 ### Manual Release (Without GitHub Actions)
@@ -222,7 +237,7 @@ If you need to release manually:
 # 1. Ensure version is updated in package.json
 # 2. Build and create tag
 npm run build
-git tag v0.2.2-beta.1
+git tag v0.3.0
 
 # 3. Create release manually
 npm run release
@@ -238,27 +253,27 @@ git push origin main
 
 # Or create GitHub release via web interface:
 # - Visit: https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/new
-# - Select tag: v0.2.2-beta.1
-# - Upload: .scaffold/build/hanchens-zotero-tldr.xpi
-# - Check "Set as a pre-release" for beta versions
+# - Select tag: v0.3.0
+# - Upload: .scaffold/build/hanchen-s-zotero-tldr.xpi
+# - Do not check "Set as a pre-release" for stable versions
 ```
 
 ### Version Naming Convention
 
-- **Beta/Pre-release**: `0.2.2-beta.1`, `0.2.2-beta.2`, etc.
-- **Stable**: `0.2.2`, `0.3.0`, `1.0.0`, etc.
-- **Release Candidate**: `0.2.2-rc.1` (optional)
+- **Beta/Pre-release**: `0.3.1-beta.1`, `0.3.1-beta.2`, etc.
+- **Stable**: `0.3.0`, `0.3.1`, `1.0.0`, etc.
+- **Release Candidate**: `0.3.1-rc.1` (optional)
 
 ### Automated Release Workflow
 
 The project uses GitHub Actions (`.github/workflows/release.yml`) which triggers on any `v*` tag push:
 
 1. Checks out code and installs dependencies
-2. Runs `npm run build`
-3. Runs `npm run release` to create GitHub Release
-4. Uploads `.xpi` file automatically
-5. Commits the channel update manifest to `updates/` on `main`
-6. Cleans up old GitHub Releases (keeps latest stable + latest pre-release)
+2. Verifies the pushed tag matches `package.json` (for example, tag `v0.3.0` requires version `0.3.0`)
+3. Runs `npm run build`
+4. Runs `npm run release` to create GitHub Release
+5. Uploads `.xpi` file automatically
+6. Commits the channel update manifest to `updates/` on `main`
 7. Adds release notifications to related issues/PRs
 
 Check release status at: https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
@@ -360,11 +375,12 @@ async function onStartup() {
 
 ### Cloudflare 524 Timeout Mitigation
 
-When using an OpenAI-compatible proxy (e.g. Cloudflare) for long remote PDF parsing, the request may hit **524 (timeout)**. This project uses two strategies to reduce 524 and to make long-running tasks observable:
+When using a proxy/gateway (e.g. Cloudflare) for long remote PDF parsing, the request may hit **524 (timeout)**. This project uses streaming to reduce 524 and to make long-running tasks observable:
 
 1. **Streamed response (SSE) to keep the connection alive**
-   - Remote PDF mode uses Gemini native streaming endpoint: `:streamGenerateContent?alt=sse`
-   - Parse `data: {...json...}` incrementally via `ReadableStream` (`src/llm/providers.ts` → `summarizeWithRemotePdf()` / `parseSSEResponse()`)
+   - Gemini Native remote PDF mode uses the Gemini streaming endpoint: `:streamGenerateContent?alt=sse`
+   - OpenAI Compatible remote PDF mode uses `/chat/completions` with `stream: true`
+   - Parse `data: {...json...}` incrementally via `ReadableStream` (`src/llm/providers.ts`)
    - Forward chunks through `onStreamChunk(chunk, isThought)` so the UI can update while the request is still running
 
 2. **Real-time “thoughts” display (progress + debugging)**

@@ -1,8 +1,8 @@
 {
   "name": "hanchens-zotero-tldr",
   "type": "module",
-  "version": "0.2.5",
-  "description": "AI-powered paper summarizer for Zotero - Extract PDF text and generate structured notes with Gemini",
+  "version": "0.3.0",
+  "description": "AI-powered Zotero paper summarizer with Gemini Native and OpenAI-compatible providers",
   "config": {
     "addonName": "Hanchen's Zotero TLDR",
     "addonID": "hanchens-zotero-tldr@local",

@@ -26,6 +26,7 @@ export async function registerPrefsScripts(_window: Window) {
   }
   bindPrefEvents();
   initSelectElements();
+  updateProviderSettingsVisibility();
 }
 
 /**
@@ -33,21 +34,54 @@ export async function registerPrefsScripts(_window: Window) {
  */
 function initSelectElements() {
   const doc = addon.data.prefs!.window.document;
+  const selectPrefs = [
+    { id: "activeProvider", pref: "activeProvider", fallback: "gemini-native" },
+    {
+      id: "geminiPdfParseMode",
+      pref: "geminiPdfParseMode",
+      fallback: "remote",
+    },
+    {
+      id: "openaiCompatiblePdfParseMode",
+      pref: "openaiCompatiblePdfParseMode",
+      fallback: "remote",
+    },
+  ];
 
-  // PDF 解析模式下拉菜单
-  const pdfParseModeSelect = doc?.querySelector(
-    `#zotero-prefpane-${config.addonRef}-pdfParseMode`,
-  ) as HTMLSelectElement | null;
+  for (const { id, pref, fallback } of selectPrefs) {
+    const select = doc?.querySelector(
+      `#zotero-prefpane-${config.addonRef}-${id}`,
+    ) as HTMLSelectElement | null;
 
-  if (pdfParseModeSelect) {
-    // 加载当前值
-    const currentValue = (getPref("pdfParseMode" as any) as string) || "remote";
-    pdfParseModeSelect.value = currentValue;
-
-    // 监听变化并保存
-    pdfParseModeSelect.addEventListener("change", () => {
-      setPref("pdfParseMode" as any, pdfParseModeSelect.value);
+    if (!select) continue;
+    select.value = (getPref(pref as any) as string) || fallback;
+    select.addEventListener("change", () => {
+      setPref(pref as any, select.value);
+      if (pref === "activeProvider") {
+        updateProviderSettingsVisibility();
+      }
     });
+  }
+}
+
+function updateProviderSettingsVisibility() {
+  const doc = addon.data.prefs!.window.document;
+  const activeProviderSelect = doc?.querySelector(
+    `#zotero-prefpane-${config.addonRef}-activeProvider`,
+  ) as HTMLSelectElement | null;
+  const geminiSettings = doc?.querySelector(
+    `#zotero-prefpane-${config.addonRef}-geminiSettings`,
+  ) as HTMLElement | null;
+  const openaiSettings = doc?.querySelector(
+    `#zotero-prefpane-${config.addonRef}-openaiCompatibleSettings`,
+  ) as HTMLElement | null;
+
+  const activeProvider = activeProviderSelect?.value || "gemini-native";
+  if (geminiSettings) {
+    geminiSettings.hidden = activeProvider !== "gemini-native";
+  }
+  if (openaiSettings) {
+    openaiSettings.hidden = activeProvider !== "openai-compatible";
   }
 }
 

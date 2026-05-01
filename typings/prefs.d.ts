@@ -7,6 +7,43 @@
 declare namespace _ZoteroTypes {
   interface Prefs {
     PluginPrefsMap: {
+      "activeProvider": string;
+      "geminiApiBase": string;
+      "geminiApiKey": string;
+      "geminiModel": string;
+      "geminiTemperature": string;
+      "geminiMaxOutputTokens": string;
+      "geminiPdfParseMode": string;
+      "geminiEnableThoughts": boolean;
+      "geminiThinkingBudget": number;
+      "geminiConcurrency": number;
+      "geminiMaxChars": string;
+      "geminiAttachmentFilter": string;
+      "geminiMaxFileSizeMB": number;
+      "geminiMaxPageCount": number;
+      "geminiSkipExistingSummary": boolean;
+      "geminiRetryOnTransientErrors": number;
+      "geminiRateLimitCount": number;
+      "geminiRateLimitWindowMinutes": number;
+      "geminiPrompt": string;
+      "openaiCompatibleApiBase": string;
+      "openaiCompatibleApiKey": string;
+      "openaiCompatibleModel": string;
+      "openaiCompatibleTemperature": string;
+      "openaiCompatibleMaxOutputTokens": string;
+      "openaiCompatiblePdfParseMode": string;
+      "openaiCompatibleEnableThoughts": boolean;
+      "openaiCompatibleThinkingBudget": number;
+      "openaiCompatibleConcurrency": number;
+      "openaiCompatibleMaxChars": string;
+      "openaiCompatibleAttachmentFilter": string;
+      "openaiCompatibleMaxFileSizeMB": number;
+      "openaiCompatibleMaxPageCount": number;
+      "openaiCompatibleSkipExistingSummary": boolean;
+      "openaiCompatibleRetryOnTransientErrors": number;
+      "openaiCompatibleRateLimitCount": number;
+      "openaiCompatibleRateLimitWindowMinutes": number;
+      "openaiCompatiblePrompt": string;
       "apiBase": string;
       "apiKey": string;
       "model": string;
