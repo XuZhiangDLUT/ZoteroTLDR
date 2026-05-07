@@ -1,7 +1,7 @@
 {
   "name": "hanchens-zotero-tldr",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "AI-powered Zotero paper summarizer with Gemini Native and OpenAI-compatible providers",
   "config": {
     "addonName": "Hanchen's Zotero TLDR",

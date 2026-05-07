@@ -1907,6 +1907,107 @@ class TaskQueuePanel {
 
 // 全局面板实例
 const taskQueuePanel = new TaskQueuePanel();
+const nativeMenuIDs = new Set<string>();
+
+type ContextMenuItem = {
+  id: string;
+  l10nID: string;
+  label: string;
+  command: () => void | Promise<void>;
+};
+
+function getContextMenuItems(): ContextMenuItem[] {
+  const addonRef = addon.data.config.addonRef;
+  return [
+    {
+      id: `zotero-itemmenu-${addonRef}-ai-summarize`,
+      l10nID: "zotero-tldr-menu-ai-summarize",
+      label: "ZoteroTLDR: AI 总结",
+      command: async () => {
+        try {
+          await AISummaryModule.summarizeSelected();
+        } catch (e: any) {
+          ztoolkit.getGlobal("alert")(`AI 总结失败：${e?.message || e}`);
+        }
+      },
+    },
+    {
+      id: `zotero-itemmenu-${addonRef}-ai-summarize-force`,
+      l10nID: "zotero-tldr-menu-ai-summarize-force",
+      label: "ZoteroTLDR: AI 总结（无过滤）",
+      command: async () => {
+        try {
+          await AISummaryModule.summarizeSelectedForce();
+        } catch (e: any) {
+          ztoolkit.getGlobal("alert")(`AI 总结失败：${e?.message || e}`);
+        }
+      },
+    },
+    {
+      id: `zotero-itemmenu-${addonRef}-task-queue`,
+      l10nID: "zotero-tldr-menu-task-queue",
+      label: "ZoteroTLDR: 查看总结任务队列",
+      command: () => {
+        AISummaryModule.openTaskQueuePanel();
+      },
+    },
+  ];
+}
+
+function registerNativeContextMenu(): boolean {
+  const menuManager = (Zotero as any).MenuManager;
+  if (typeof menuManager?.registerMenu !== "function") {
+    return false;
+  }
+  if (nativeMenuIDs.size > 0) {
+    return true;
+  }
+
+  try {
+    const registeredID = menuManager.registerMenu({
+      menuID: `zotero-itemmenu-${addon.data.config.addonRef}`,
+      pluginID: addon.data.config.addonID,
+      target: "main/library/item",
+      menus: getContextMenuItems().map((item) => ({
+        menuType: "menuitem",
+        l10nID: item.l10nID,
+        onCommand: () => {
+          void item.command();
+        },
+        icon: `chrome://${addon.data.config.addonRef}/content/icons/favicon.png`,
+      })),
+    });
+    if (!registeredID) {
+      throw new Error("Zotero.MenuManager.registerMenu returned false");
+    }
+    nativeMenuIDs.add(registeredID);
+    return true;
+  } catch (e) {
+    ztoolkit.log(
+      "Zotero.MenuManager registration failed, fallback to toolkit",
+      e,
+    );
+    unregisterNativeContextMenu();
+    return false;
+  }
+}
+
+function unregisterNativeContextMenu(): void {
+  const menuManager = (Zotero as any).MenuManager;
+  if (typeof menuManager?.unregisterMenu !== "function") {
+    nativeMenuIDs.clear();
+    return;
+  }
+
+  for (const menuID of nativeMenuIDs) {
+    try {
+      menuManager.unregisterMenu(menuID);
+    } catch (e) {
+      ztoolkit.log("Zotero.MenuManager unregister failed:", menuID, e);
+    }
+  }
+  nativeMenuIDs.clear();
+}
 
 /**
  * AI 摘要模块
@@ -1916,43 +2017,25 @@ export class AISummaryModule {
    * 注册右键菜单
    */
   static registerContextMenu(): void {
-    // AI 总结菜单项
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      id: `zotero-itemmenu-${addon.data.config.addonRef}-ai-summarize`,
-      label: "ZoteroTLDR: AI 总结",
-      commandListener: async () => {
-        try {
-          await AISummaryModule.summarizeSelected();
-        } catch (e: any) {
-          ztoolkit.getGlobal("alert")(`AI 总结失败：${e?.message || e}`);
-        }
-      },
-    });
+    if (registerNativeContextMenu()) {
+      return;
+    }
 
-    // 强制总结菜单项（无视过滤规则，仅支持单个 PDF 附件）
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      id: `zotero-itemmenu-${addon.data.config.addonRef}-ai-summarize-force`,
-      label: "ZoteroTLDR: AI 总结（无过滤）",
-      commandListener: async () => {
-        try {
-          await AISummaryModule.summarizeSelectedForce();
-        } catch (e: any) {
-          ztoolkit.getGlobal("alert")(`AI 总结失败：${e?.message || e}`);
-        }
-      },
-    });
+    for (const item of getContextMenuItems()) {
+      ztoolkit.Menu.register("item", {
+        tag: "menuitem",
+        id: item.id,
+        label: item.label,
+        commandListener: item.command,
+      });
+    }
+  }
 
-    // 任务队列菜单项
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      id: `zotero-itemmenu-${addon.data.config.addonRef}-task-queue`,
-      label: "ZoteroTLDR: 查看总结任务队列",
-      commandListener: () => {
-        AISummaryModule.openTaskQueuePanel();
-      },
-    });
+  /**
+   * 取消注册右键菜单
+   */
+  static unregisterContextMenu(): void {
+    unregisterNativeContextMenu();
   }
 
   /**

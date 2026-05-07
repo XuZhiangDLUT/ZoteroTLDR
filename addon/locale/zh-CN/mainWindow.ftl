@@ -1,3 +1,10 @@
+zotero-tldr-menu-ai-summarize =
+    .label = ZoteroTLDR: AI 总结
+zotero-tldr-menu-ai-summarize-force =
+    .label = ZoteroTLDR: AI 总结（无过滤）
+zotero-tldr-menu-task-queue =
+    .label = ZoteroTLDR: 查看总结任务队列
+
 item-section-example1-head-text =
     .label = 插件模板: 条目信息
 item-section-example1-sidenav-tooltip =

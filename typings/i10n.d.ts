@@ -55,4 +55,7 @@ export type FluentMessageId =
   | 'startup-begin'
   | 'startup-finish'
   | 'tabpanel-lib-tab-label'
-  | 'tabpanel-reader-tab-label';
+  | 'tabpanel-reader-tab-label'
+  | 'zotero-tldr-menu-ai-summarize'
+  | 'zotero-tldr-menu-ai-summarize-force'
+  | 'zotero-tldr-menu-task-queue';

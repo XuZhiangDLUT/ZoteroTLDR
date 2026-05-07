@@ -1,3 +1,10 @@
+zotero-tldr-menu-ai-summarize =
+    .label = ZoteroTLDR: AI Summary
+zotero-tldr-menu-ai-summarize-force =
+    .label = ZoteroTLDR: AI Summary (no filter)
+zotero-tldr-menu-task-queue =
+    .label = ZoteroTLDR: Summary task queue
+
 item-section-example1-head-text =
     .label = Plugin Template: Item Info
 item-section-example1-sidenav-tooltip =
