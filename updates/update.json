@@ -5,7 +5,7 @@
         {
           "version": "0.3.1",
           "update_link": "https://github.com/XuZhiangDLUT/ZoteroTLDR/releases/download/v0.3.1/hanchen-s-zotero-tldr.xpi",
-          "update_hash": "sha512:33467be0862095fdbbfb973b1cae576ba1da93947a45c6a1d6fc747bb850d69005a4d059f61faf5547d2fc746ff57ae6ff7bf2a7a6e776932fe04f6c0b2b8ac1",
+          "update_hash": "sha512:c1242a07d75ba88008ae1e9327c8c002b8614f1c0f44d04bb38d9a10b2a52f26049efc29e0c2da249bd78a445ffd309bc95a6f5fd57d2e1276c8fca60f5dd36f",
           "applications": {
             "zotero": {
               "strict_min_version": "6.999",
