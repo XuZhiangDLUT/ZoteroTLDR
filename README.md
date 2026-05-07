@@ -33,7 +33,7 @@ Stable builds embed this Zotero update URL:
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-After `v0.3.0` is released on GitHub and `updates/update.json` is committed, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install `v0.3.0` once manually to migrate to the in-repo update manifest.
+After `v0.3.2` is released on GitHub and `updates/update.json` is committed, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
 
 ## Quick Start
 
@@ -108,6 +108,25 @@ Output: `.scaffold/build/hanchen-s-zotero-tldr.xpi`
 - Clean up any unnecessary build artifacts
 - Update version in `package.json` if needed
 
+### Auto-Update Release Chain
+
+This repository already has GitHub Actions configured at `.github/workflows/release.yml`. For normal releases, do not upload the `.xpi` manually:
+
+```bash
+git push origin main
+git push origin vX.Y.Z
+```
+
+After the tag is pushed, GitHub Actions rebuilds the `.xpi` in CI, creates the GitHub Release, uploads the artifact, and commits the corresponding `updates/update*.json` manifest back to `main`.
+
+Note: the `.xpi` contains build-time data, so a local build and the GitHub Actions build usually have different `sha512` hashes. Trust the hash committed by Actions to `updates/update*.json`. After the release workflow finishes, run:
+
+```bash
+git pull --ff-only
+```
+
+to sync the `github-actions[bot]` manifest commit back into your local checkout.
+
 ### Update Channel Logic (Stable vs Test)
 
 This plugin uses **two separate update channels** to ensure beta testers and stable users receive appropriate updates:
@@ -179,10 +198,7 @@ git commit -m "feat: your feature description
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
-# 4. Build the plugin
-npm run build
-
-# 5. Create and push git tag
+# 4. Create and push git tag
 git tag v0.3.1-beta.1
 git push origin main
 git push origin v0.3.1-beta.1
@@ -192,6 +208,9 @@ git push origin v0.3.1-beta.1
 # - Create GitHub Release (marked as pre-release)
 # - Upload the .xpi file
 # - Update `updates/update-beta.json` so installed beta builds can auto-update
+
+# 5. Sync the update manifest committed by Actions
+git pull --ff-only
 ```
 
 ### Publishing Stable Version
@@ -214,10 +233,7 @@ git commit -m "chore(release): v0.3.0
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
-# 4. Build the plugin
-npm run build
-
-# 5. Create and push git tag (without -beta suffix)
+# 4. Create and push git tag (without -beta suffix)
 git tag v0.3.0
 git push origin main
 git push origin v0.3.0
@@ -227,11 +243,14 @@ git push origin v0.3.0
 # - Create GitHub Release (stable)
 # - Upload the .xpi file
 # - Update `updates/update.json` so installed stable builds can auto-update
+
+# 5. Sync the update manifest committed by Actions
+git pull --ff-only
 ```
 
 ### Manual Release (Without GitHub Actions)
 
-If you need to release manually:
+Use this only when GitHub Actions is unavailable. For manual releases, the uploaded `.xpi` must exactly match the `update_hash` in `updates/update*.json`.
 
 ```bash
 # 1. Ensure version is updated in package.json
@@ -256,6 +275,7 @@ git push origin main
 # - Select tag: v0.3.0
 # - Upload: .scaffold/build/hanchen-s-zotero-tldr.xpi
 # - Do not check "Set as a pre-release" for stable versions
+# - After publishing, recalculate the uploaded asset's SHA-512 and ensure `updates/update*.json` matches it
 ```
 
 ### Version Naming Convention
@@ -273,8 +293,11 @@ The project uses GitHub Actions (`.github/workflows/release.yml`) which triggers
 3. Runs `npm run build`
 4. Runs `npm run release` to create GitHub Release
 5. Uploads `.xpi` file automatically
-6. Commits the channel update manifest to `updates/` on `main`
-7. Adds release notifications to related issues/PRs
+6. Computes `update_hash` from the CI-built `.xpi`
+7. Commits the channel update manifest to `updates/` on `main`
+8. Adds release notifications to related issues/PRs
+
+After the workflow finishes, your local branch will usually be `behind 1` because Actions appends a commit such as `chore: update stable manifest for vX.Y.Z`. Run `git pull --ff-only` to sync it.
 
 Check release status at: https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
 

@@ -33,7 +33,7 @@
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-`v0.3.0` 发布到 GitHub 且 `updates/update.json` 提交后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次 `v0.3.0`，之后就会迁移到仓库内更新清单。
+`v0.3.2` 发布到 GitHub 且 `updates/update.json` 提交后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
 
 ## 快速开始
 
@@ -108,6 +108,25 @@ npm run build
 - 清理不必要的构建产物
 - 根据需要更新 `package.json` 中的版本号
 
+### 自动更新与发布链路
+
+当前仓库已经配置 GitHub Actions（`.github/workflows/release.yml`）。正常发布时不需要手动上传 `.xpi`：
+
+```bash
+git push origin main
+git push origin vX.Y.Z
+```
+
+推送 tag 后，GitHub Actions 会在云端重新构建 `.xpi`、创建 GitHub Release、上传构建产物，并把对应通道的 `updates/update*.json` 自动提交回 `main`。
+
+注意：`.xpi` 内包含构建时间，因此本地构建产物与 GitHub Actions 构建产物的 `sha512` 通常不同。以 Actions 自动提交回 `updates/update*.json` 的 hash 为准。发布完成后执行：
+
+```bash
+git pull --ff-only
+```
+
+把 `github-actions[bot]` 回写的更新清单同步回本地仓库。
+
 ### 更新通道逻辑（稳定/测试）
 
 本插件使用**两个独立的更新通道**来确保测试用户和正式用户各自收到合适的更新：
@@ -179,10 +198,7 @@ git commit -m "feat: 功能描述
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
-# 4. 构建插件
-npm run build
-
-# 5. 创建并推送 git tag
+# 4. 创建并推送 git tag
 git tag v0.3.1-beta.1
 git push origin main
 git push origin v0.3.1-beta.1
@@ -192,6 +208,9 @@ git push origin v0.3.1-beta.1
 # - 创建 GitHub Release（标记为预发布）
 # - 上传 .xpi 文件
 # - 更新 `updates/update-beta.json`，让已安装的 beta 版自动更新
+
+# 5. 同步 Actions 回写的更新清单
+git pull --ff-only
 ```
 
 ### 发布正式版本
@@ -214,10 +233,7 @@ git commit -m "chore(release): v0.3.0
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
-# 4. 构建插件
-npm run build
-
-# 5. 创建并推送 git tag（不带 -beta 后缀）
+# 4. 创建并推送 git tag（不带 -beta 后缀）
 git tag v0.3.0
 git push origin main
 git push origin v0.3.0
@@ -227,11 +243,14 @@ git push origin v0.3.0
 # - 创建 GitHub Release（稳定版）
 # - 上传 .xpi 文件
 # - 更新 `updates/update.json`，让已安装的稳定版自动更新
+
+# 5. 同步 Actions 回写的更新清单
+git pull --ff-only
 ```
 
 ### 手动发布（不使用 GitHub Actions）
 
-如果需要手动发布：
+仅在 GitHub Actions 不可用时使用手动发布。手动发布时必须确保上传的 `.xpi` 与 `updates/update*.json` 中的 `update_hash` 完全一致。
 
 ```bash
 # 1. 确保 package.json 中的版本号已更新
@@ -256,6 +275,7 @@ git push origin main
 # - 选择 tag：v0.3.0
 # - 上传文件：.scaffold/build/hanchen-s-zotero-tldr.xpi
 # - 稳定版不要勾选 "Set as a pre-release"
+# - 发布后重新计算已上传资产的 SHA-512，并确认 `updates/update*.json` 中的 `update_hash` 一致
 ```
 
 ### 版本命名规范
@@ -273,8 +293,11 @@ git push origin main
 3. 运行 `npm run build`
 4. 运行 `npm run release` 创建 GitHub Release
 5. 自动上传 `.xpi` 文件
-6. 将对应通道的更新清单提交到 `main` 的 `updates/`
-7. 在相关 issue/PR 上添加发布通知
+6. 根据云端构建出的 `.xpi` 计算 `update_hash`
+7. 将对应通道的更新清单提交到 `main` 的 `updates/`
+8. 在相关 issue/PR 上添加发布通知
+
+发布完成后，本地仓库通常会显示 `behind 1`，因为 Actions 会追加一个类似 `chore: update stable manifest for vX.Y.Z` 的提交。执行 `git pull --ff-only` 即可同步。
 
 查看发布状态：https://github.com/XuZhiangDLUT/ZoteroTLDR/actions
 
