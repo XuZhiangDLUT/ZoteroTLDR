@@ -6,6 +6,8 @@ import {
   testAPI,
   type SummarizeResult,
 } from "../llm/providers";
+import { getLocaleID } from "../utils/locale";
+import type { FluentMessageId } from "../../typings/i10n";
 
 /**
  * 速率限制器 - 滑动窗口实现
@@ -1911,7 +1913,7 @@ const nativeMenuIDs = new Set<string>();
 
 type ContextMenuItem = {
   id: string;
-  l10nID: string;
+  l10nID: FluentMessageId;
   label: string;
   command: () => void | Promise<void>;
 };
@@ -1970,7 +1972,12 @@ function registerNativeContextMenu(): boolean {
       target: "main/library/item",
       menus: getContextMenuItems().map((item) => ({
         menuType: "menuitem",
-        l10nID: item.l10nID,
+        l10nID: getLocaleID(item.l10nID),
+        onShowing: (_event: Event, context: { menuElem?: XULElement }) => {
+          // Zotero 9 native menus require the build-time-prefixed Fluent ID.
+          // Keep a direct label fallback so missing l10n never leaves icon-only items.
+          context.menuElem?.setAttribute("label", item.label);
+        },
         onCommand: () => {
           void item.command();
         },
