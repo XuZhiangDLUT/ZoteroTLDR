@@ -111,6 +111,8 @@ function isTransientErrorMessage(msg: string): boolean {
     lowered.includes("timed out") ||
     lowered.includes("operation timed out") ||
     lowered.includes("etimeout") ||
+    lowered.includes("sse stream error") ||
+    lowered.includes("empty result") ||
     lowered.includes("invalid authentication credentials") // 部分代理把认证失败包装成 429/upstream_error
   );
 }
@@ -1033,6 +1035,13 @@ async function summarizeSinglePdf(
         // 其他错误直接抛出
         throw e;
       }
+    }
+
+    // 检查远端解析是否返回了空结果（流式连接可能在生成正文前被关闭，例如代理超时）
+    if (!result.markdown?.trim()) {
+      throw new Error(
+        "远端解析超时：流式连接在生成正文前关闭 (timeout / empty result)",
+      );
     }
   } else {
     // 本地解析模式：使用本地提取的文本

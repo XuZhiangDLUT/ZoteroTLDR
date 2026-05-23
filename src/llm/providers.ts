@@ -429,6 +429,7 @@ async function parseOpenAICompatibleStreamResponse(
 
   let markdown = "";
   let thoughtsMarkdown = "";
+  let streamError: string | null = null;
   const decoder = new TextDecoder();
   let buffer = "";
 
@@ -449,11 +450,18 @@ async function parseOpenAICompatibleStreamResponse(
         if (!jsonStr || jsonStr === "[DONE]") continue;
 
         try {
-          const data = JSON.parse(jsonStr);
-          const delta =
-            data.choices?.[0]?.delta ?? data.choices?.[0]?.message ?? {};
-          const thoughtChunk = extractReasoningChunk(delta);
-          const contentChunk = extractTextLike(delta.content);
+          const data = JSON.parse(jsonStr) as Record<string, unknown>;
+
+          const sseError = extractSSEError(data);
+          if (sseError) {
+            streamError = sseError;
+            continue;
+          }
+
+          const choices = data.choices as Array<Record<string, unknown>> | undefined;
+          const delta = choices?.[0]?.delta ?? choices?.[0]?.message ?? {};
+          const thoughtChunk = extractReasoningChunk(delta as Record<string, unknown>);
+          const contentChunk = extractTextLike((delta as Record<string, unknown>).content);
 
           if (thoughtChunk) {
             thoughtsMarkdown += thoughtChunk;
@@ -473,18 +481,23 @@ async function parseOpenAICompatibleStreamResponse(
       const jsonStr = buffer.trim().slice(5).trim();
       if (jsonStr && jsonStr !== "[DONE]") {
         try {
-          const data = JSON.parse(jsonStr);
-          const delta =
-            data.choices?.[0]?.delta ?? data.choices?.[0]?.message ?? {};
-          const thoughtChunk = extractReasoningChunk(delta);
-          const contentChunk = extractTextLike(delta.content);
-          if (thoughtChunk) {
-            thoughtsMarkdown += thoughtChunk;
-            onStreamChunk?.(thoughtChunk, true);
-          }
-          if (contentChunk) {
-            markdown += contentChunk;
-            onStreamChunk?.(contentChunk, false);
+          const data = JSON.parse(jsonStr) as Record<string, unknown>;
+          const sseError = extractSSEError(data);
+          if (sseError) {
+            streamError = sseError;
+          } else {
+            const choices = data.choices as Array<Record<string, unknown>> | undefined;
+            const delta = choices?.[0]?.delta ?? choices?.[0]?.message ?? {};
+            const thoughtChunk = extractReasoningChunk(delta as Record<string, unknown>);
+            const contentChunk = extractTextLike((delta as Record<string, unknown>).content);
+            if (thoughtChunk) {
+              thoughtsMarkdown += thoughtChunk;
+              onStreamChunk?.(thoughtChunk, true);
+            }
+            if (contentChunk) {
+              markdown += contentChunk;
+              onStreamChunk?.(contentChunk, false);
+            }
           }
         } catch (_e) {
           // ignore trailing partial chunk
@@ -493,6 +506,11 @@ async function parseOpenAICompatibleStreamResponse(
     }
   } finally {
     reader.releaseLock();
+  }
+
+  // 如果收到了服务端错误事件且没有生成正文内容，抛出异常以触发重试
+  if (!markdown.trim() && streamError) {
+    throw new Error(`SSE stream error: ${streamError}`);
   }
 
   return {
@@ -519,6 +537,19 @@ function parseOpenAICompatibleSingleResponse(
 }
 
 /**
+ * 从 SSE 事件 JSON 中提取错误信息
+ */
+function extractSSEError(data: Record<string, unknown>): string | null {
+  if (!data.error) return null;
+  if (typeof data.error === "string") return data.error;
+  if (typeof data.error === "object") {
+    const err = data.error as Record<string, unknown>;
+    return String(err.message || err.msg || err.code || JSON.stringify(err));
+  }
+  return String(data.error);
+}
+
+/**
  * 解析 SSE 流式响应（真正的流式读取）
  */
 async function parseSSEResponse(
@@ -527,6 +558,7 @@ async function parseSSEResponse(
 ): Promise<SummarizeResult> {
   let markdown = "";
   let thoughtsMarkdown = "";
+  let streamError: string | null = null;
 
   const extractChunk = (part: any): string => {
     if (typeof part?.text === "string" && part.text) return part.text;
@@ -586,20 +618,21 @@ async function parseSSEResponse(
           if (!jsonStr || jsonStr === "[DONE]") continue;
 
           try {
-            const data = JSON.parse(jsonStr) as {
-              candidates?: Array<{
-                content?: {
-                  parts?: Array<{
-                    text?: string;
-                    thought?: unknown;
-                  }>;
-                };
-              }>;
-            };
+            const data = JSON.parse(jsonStr) as Record<string, unknown>;
+
+            // 检查是否为服务端错误事件
+            const sseError = extractSSEError(data);
+            if (sseError) {
+              streamError = sseError;
+              continue;
+            }
 
             // 解析每个响应片段
-            if (data.candidates?.[0]?.content?.parts) {
-              for (const part of data.candidates[0].content.parts) {
+            if (
+              Array.isArray(data.candidates) &&
+              (data.candidates[0] as any)?.content?.parts
+            ) {
+              for (const part of (data.candidates[0] as any).content.parts) {
                 const chunk = extractChunk(part);
                 if (!chunk) continue;
                 if (isThoughtPart(part)) {
@@ -624,9 +657,15 @@ async function parseSSEResponse(
       const jsonStr = buffer.slice(6).trim();
       if (jsonStr && jsonStr !== "[DONE]") {
         try {
-          const data = JSON.parse(jsonStr);
-          if (data.candidates?.[0]?.content?.parts) {
-            for (const part of data.candidates[0].content.parts) {
+          const data = JSON.parse(jsonStr) as Record<string, unknown>;
+          const sseError = extractSSEError(data);
+          if (sseError) {
+            streamError = sseError;
+          } else if (
+            Array.isArray(data.candidates) &&
+            (data.candidates[0] as any)?.content?.parts
+          ) {
+            for (const part of (data.candidates[0] as any).content.parts) {
               const chunk = extractChunk(part);
               if (!chunk) continue;
               if (isThoughtPart(part)) {
@@ -651,6 +690,11 @@ async function parseSSEResponse(
   if (!markdown && !thoughtsMarkdown) {
     // 可能是非 SSE 格式的响应
     return { markdown: "", thoughtsMarkdown: undefined };
+  }
+
+  // 如果收到了服务端错误事件且没有生成正文内容，抛出异常以触发重试
+  if (!markdown.trim() && streamError) {
+    throw new Error(`SSE stream error: ${streamError}`);
   }
 
   return {
