@@ -103,11 +103,15 @@
       fullText.length > MAX_CHARS ? fullText.slice(0, MAX_CHARS) : fullText;
 
     const title =
-      (parentItem && parentItem.getDisplayTitle && parentItem.getDisplayTitle()) ||
+      (parentItem &&
+        parentItem.getDisplayTitle &&
+        parentItem.getDisplayTitle()) ||
       (attachment.getDisplayTitle && attachment.getDisplayTitle()) ||
       "";
     const abstract =
-      (parentItem && parentItem.getField && parentItem.getField("abstractNote")) ||
+      (parentItem &&
+        parentItem.getField &&
+        parentItem.getField("abstractNote")) ||
       "";
 
     return { title, abstract: String(abstract || ""), content, fileName };
@@ -283,7 +287,10 @@
         if (!loggedDeltaKeys && delta && Object.keys(delta).length) {
           loggedDeltaKeys = true;
           console.log("[DEBUG] delta keys:", Object.keys(delta));
-          console.log("[DEBUG] delta sample:", JSON.stringify(delta).slice(0, 800));
+          console.log(
+            "[DEBUG] delta sample:",
+            JSON.stringify(delta).slice(0, 800),
+          );
         }
 
         const r = pickThoughtChunk(delta);

@@ -36,8 +36,69 @@ function getApiKey(prefs: AddonPrefs): string {
   return key;
 }
 
-function getChatCompletionsUrl(prefs: AddonPrefs): string {
+export function getChatCompletionsUrl(prefs: AddonPrefs): string {
   return `${prefs.apiBase.replace(/\/$/, "")}/chat/completions`;
+}
+
+function isOpenAIChatProvider(prefs: AddonPrefs): boolean {
+  return (
+    prefs.provider === "openai-compatible" ||
+    prefs.provider === "mimo-token-plan"
+  );
+}
+
+function getOpenAIChatAuthHeaders(prefs: AddonPrefs): Record<string, string> {
+  const apiKey = getApiKey(prefs);
+  if (prefs.provider === "mimo-token-plan") {
+    return { "api-key": apiKey };
+  }
+  return { Authorization: `Bearer ${apiKey}` };
+}
+
+export function buildOpenAICompatibleChatRequest(opts: {
+  prefs: AddonPrefs;
+  messages: Array<Record<string, unknown>>;
+  stream?: boolean;
+  maxOutputTokens?: number;
+  extraBody?: Record<string, unknown>;
+  extraHeaders?: Record<string, string>;
+}): {
+  url: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+} {
+  const { prefs, messages, extraBody, extraHeaders } = opts;
+  const body: Record<string, unknown> = {
+    model: prefs.model,
+    messages,
+    temperature: prefs.temperature ?? 0.2,
+  };
+
+  if (opts.stream !== undefined) {
+    body.stream = opts.stream;
+  }
+
+  const maxOutputTokens = opts.maxOutputTokens ?? prefs.maxOutputTokens;
+  if (maxOutputTokens !== undefined) {
+    if (prefs.provider === "mimo-token-plan") {
+      body.max_completion_tokens = maxOutputTokens;
+    } else {
+      body.max_tokens = maxOutputTokens;
+    }
+  }
+
+  applyOpenAICompatibleThinkingConfig(body, prefs);
+  Object.assign(body, extraBody);
+
+  return {
+    url: getChatCompletionsUrl(prefs),
+    headers: {
+      "Content-Type": "application/json",
+      ...getOpenAIChatAuthHeaders(prefs),
+      ...extraHeaders,
+    },
+    body,
+  };
 }
 
 /**
@@ -48,33 +109,18 @@ export async function summarize(
   opts: SummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt } = opts;
-  const url = getChatCompletionsUrl(prefs);
-
-  const body: Record<string, unknown> = {
-    model: prefs.model,
+  const request = buildOpenAICompatibleChatRequest({
+    prefs,
     messages: [
       { role: "system", content: "You are an academic assistant." },
       { role: "user", content: prompt },
     ],
-    temperature: prefs.temperature ?? 0.2,
-  };
+  });
 
-  // 通过 extra_body 传递 Gemini 的 thinking 配置
-  if (prefs.enableThoughts) {
-    body.extra_body = {
-      generationConfig: {
-        thinkingConfig: { thinkingBudget: prefs.thinkingBudget ?? -1 },
-      },
-    };
-  }
-
-  const res = await fetch(url, {
+  const res = await fetch(request.url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey(prefs)}`,
-    },
-    body: JSON.stringify(body),
+    headers: request.headers,
+    body: JSON.stringify(request.body),
   });
 
   if (!res.ok) {
@@ -98,22 +144,19 @@ export async function summarize(
  * 测试 API 连接
  */
 export async function testAPI(prefs: AddonPrefs): Promise<string> {
-  const url = getChatCompletionsUrl(prefs);
-
-  const body = {
-    model: prefs.model,
-    messages: [{ role: "user", content: "请直接回复：pong" }],
-    temperature: 0.1,
-    max_tokens: 10,
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey(prefs)}`,
+  const request = buildOpenAICompatibleChatRequest({
+    prefs: {
+      ...prefs,
+      temperature: 0.1,
     },
-    body: JSON.stringify(body),
+    messages: [{ role: "user", content: "请直接回复：pong" }],
+    maxOutputTokens: 10,
+  });
+
+  const res = await fetch(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body: JSON.stringify(request.body),
   });
 
   if (!res.ok) {
@@ -140,7 +183,7 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
 export async function summarizeWithRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
-  if (opts.prefs.provider === "openai-compatible") {
+  if (isOpenAIChatProvider(opts.prefs)) {
     return summarizeWithOpenAICompatibleRemotePdf(opts);
   }
 
@@ -267,7 +310,7 @@ export async function summarizeWithTextStream(
     onStreamChunk?: (chunk: string, isThought: boolean) => void;
   },
 ): Promise<SummarizeResult> {
-  if (opts.prefs.provider === "openai-compatible") {
+  if (isOpenAIChatProvider(opts.prefs)) {
     return summarizeWithOpenAICompatibleTextStream(opts);
   }
   return summarizeWithGeminiTextStream(opts);
@@ -278,6 +321,7 @@ function applyOpenAICompatibleThinkingConfig(
   prefs: AddonPrefs,
 ): void {
   if (!prefs.enableThoughts) return;
+  if (prefs.provider === "mimo-token-plan") return;
 
   const thinking: Record<string, unknown> = { type: "enabled" };
   if (prefs.thinkingBudget > 0) {
@@ -291,6 +335,12 @@ async function summarizeWithOpenAICompatibleRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt, pdfBase64, fileName, onStreamChunk } = opts;
+  if (prefs.provider === "mimo-token-plan") {
+    throw new Error(
+      "MiMo Token Plan 暂不支持远端 PDF 直传，请将 PDF 解析模式切换为本地（提取文本）。",
+    );
+  }
+
   const safeFileName = fileName || "document.pdf";
   const content = [
     {
@@ -354,25 +404,18 @@ async function streamOpenAICompatibleChat(opts: {
     onStreamChunk,
     errorPrefix,
   } = opts;
-  const body: Record<string, unknown> = {
-    model: prefs.model,
+  const request = buildOpenAICompatibleChatRequest({
+    prefs,
     messages,
-    temperature: prefs.temperature ?? 0.2,
-    max_tokens: prefs.maxOutputTokens,
     stream: true,
-  };
+    extraBody,
+    extraHeaders,
+  });
 
-  applyOpenAICompatibleThinkingConfig(body, prefs);
-  Object.assign(body, extraBody);
-
-  const res = await fetch(getChatCompletionsUrl(prefs), {
+  const res = await fetch(request.url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey(prefs)}`,
-      ...extraHeaders,
-    },
-    body: JSON.stringify(body),
+    headers: request.headers,
+    body: JSON.stringify(request.body),
   });
 
   if (!res.ok) {
@@ -458,10 +501,16 @@ async function parseOpenAICompatibleStreamResponse(
             continue;
           }
 
-          const choices = data.choices as Array<Record<string, unknown>> | undefined;
+          const choices = data.choices as
+            | Array<Record<string, unknown>>
+            | undefined;
           const delta = choices?.[0]?.delta ?? choices?.[0]?.message ?? {};
-          const thoughtChunk = extractReasoningChunk(delta as Record<string, unknown>);
-          const contentChunk = extractTextLike((delta as Record<string, unknown>).content);
+          const thoughtChunk = extractReasoningChunk(
+            delta as Record<string, unknown>,
+          );
+          const contentChunk = extractTextLike(
+            (delta as Record<string, unknown>).content,
+          );
 
           if (thoughtChunk) {
             thoughtsMarkdown += thoughtChunk;
@@ -486,10 +535,16 @@ async function parseOpenAICompatibleStreamResponse(
           if (sseError) {
             streamError = sseError;
           } else {
-            const choices = data.choices as Array<Record<string, unknown>> | undefined;
+            const choices = data.choices as
+              | Array<Record<string, unknown>>
+              | undefined;
             const delta = choices?.[0]?.delta ?? choices?.[0]?.message ?? {};
-            const thoughtChunk = extractReasoningChunk(delta as Record<string, unknown>);
-            const contentChunk = extractTextLike((delta as Record<string, unknown>).content);
+            const thoughtChunk = extractReasoningChunk(
+              delta as Record<string, unknown>,
+            );
+            const contentChunk = extractTextLike(
+              (delta as Record<string, unknown>).content,
+            );
             if (thoughtChunk) {
               thoughtsMarkdown += thoughtChunk;
               onStreamChunk?.(thoughtChunk, true);

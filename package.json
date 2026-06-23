@@ -1,8 +1,8 @@
 {
   "name": "hanchens-zotero-tldr",
   "type": "module",
-  "version": "0.3.3",
-  "description": "AI-powered Zotero paper summarizer with Gemini Native and OpenAI-compatible providers",
+  "version": "0.3.4",
+  "description": "AI-powered Zotero paper summarizer with Gemini Native, OpenAI-compatible, and MiMo Token Plan providers",
   "config": {
     "addonName": "Hanchen's Zotero TLDR",
     "addonID": "hanchens-zotero-tldr@local",
@@ -27,6 +27,7 @@
     "lint:fix": "prettier --write . && eslint . --fix",
     "release": "zotero-plugin release",
     "test": "zotero-plugin test",
+    "test:provider": "esbuild test/provider-request.test.ts --bundle --platform=node --format=esm --outfile=.scaffold/test/provider-request.test.mjs && node --test .scaffold/test/provider-request.test.mjs",
     "update-deps": "npm update --save"
   },
   "dependencies": {

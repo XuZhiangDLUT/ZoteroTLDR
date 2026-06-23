@@ -2,6 +2,7 @@ pref-title = ZoteroTLDR Settings
 pref-active-provider = Active Provider:
 pref-provider-gemini = Gemini Native
 pref-provider-openai-compatible = OpenAI Compatible
+pref-provider-mimo = MiMo Token Plan
 pref-api-base = API Base URL:
 pref-api-key = API Key:
 pref-model = Model:

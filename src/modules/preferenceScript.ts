@@ -46,6 +46,11 @@ function initSelectElements() {
       pref: "openaiCompatiblePdfParseMode",
       fallback: "remote",
     },
+    {
+      id: "mimoPdfParseMode",
+      pref: "mimoPdfParseMode",
+      fallback: "local",
+    },
   ];
 
   for (const { id, pref, fallback } of selectPrefs) {
@@ -75,6 +80,9 @@ function updateProviderSettingsVisibility() {
   const openaiSettings = doc?.querySelector(
     `#zotero-prefpane-${config.addonRef}-openaiCompatibleSettings`,
   ) as HTMLElement | null;
+  const mimoSettings = doc?.querySelector(
+    `#zotero-prefpane-${config.addonRef}-mimoSettings`,
+  ) as HTMLElement | null;
 
   const activeProvider = activeProviderSelect?.value || "gemini-native";
   if (geminiSettings) {
@@ -82,6 +90,9 @@ function updateProviderSettingsVisibility() {
   }
   if (openaiSettings) {
     openaiSettings.hidden = activeProvider !== "openai-compatible";
+  }
+  if (mimoSettings) {
+    mimoSettings.hidden = activeProvider !== "mimo-token-plan";
   }
 }
 

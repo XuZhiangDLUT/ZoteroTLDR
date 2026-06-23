@@ -25,6 +25,9 @@
           data-l10n-id="pref-provider-openai-compatible"
           >OpenAI Compatible</html:option
         >
+        <html:option value="mimo-token-plan" data-l10n-id="pref-provider-mimo"
+          >MiMo Token Plan</html:option
+        >
       </html:select>
     </hbox>
 
@@ -487,6 +490,234 @@
       <html:textarea
         id="zotero-prefpane-__addonRef__-openaiCompatiblePrompt"
         preference="extensions.zotero.__addonRef__.openaiCompatiblePrompt"
+        rows="8"
+        style="width: 100%"
+      />
+    </vbox>
+  </groupbox>
+
+  <groupbox id="zotero-prefpane-__addonRef__-mimoSettings">
+    <label
+      ><html:h3 data-l10n-id="pref-provider-mimo"
+        >MiMo Token Plan</html:h3
+      ></label
+    >
+
+    <hbox align="center">
+      <label data-l10n-id="pref-api-base" style="width: 120px"
+        >API Base URL:</label
+      >
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-mimoApiBase"
+        preference="extensions.zotero.__addonRef__.mimoApiBase"
+        style="width: 350px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-api-key" style="width: 120px">API Key:</label>
+      <html:input
+        type="password"
+        id="zotero-prefpane-__addonRef__-mimoApiKey"
+        preference="extensions.zotero.__addonRef__.mimoApiKey"
+        style="width: 350px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-model" style="width: 120px">Model:</label>
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-mimoModel"
+        preference="extensions.zotero.__addonRef__.mimoModel"
+        style="width: 300px"
+      />
+      <label data-l10n-id="pref-temperature" style="margin-left: 20px"
+        >Temperature:</label
+      >
+      <html:input
+        type="number"
+        step="0.1"
+        min="0"
+        max="2"
+        id="zotero-prefpane-__addonRef__-mimoTemperature"
+        preference="extensions.zotero.__addonRef__.mimoTemperature"
+        style="width: 70px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-max-output-tokens" style="width: 120px"
+        >Max Tokens:</label
+      >
+      <html:input
+        type="number"
+        min="1024"
+        max="1000000"
+        id="zotero-prefpane-__addonRef__-mimoMaxOutputTokens"
+        preference="extensions.zotero.__addonRef__.mimoMaxOutputTokens"
+        style="width: 110px"
+      />
+      <label data-l10n-id="pref-pdf-parse-mode" style="margin-left: 20px"
+        >PDF Parse Mode:</label
+      >
+      <html:select
+        id="zotero-prefpane-__addonRef__-mimoPdfParseMode"
+        preference="extensions.zotero.__addonRef__.mimoPdfParseMode"
+        style="width: 180px"
+      >
+        <html:option value="remote" data-l10n-id="pref-pdf-parse-mode-remote"
+          >Remote (upload PDF)</html:option
+        >
+        <html:option value="local" data-l10n-id="pref-pdf-parse-mode-local"
+          >Local (extract text)</html:option
+        >
+      </html:select>
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-enable-thoughts" style="width: 120px"
+        >Enable Thoughts:</label
+      >
+      <checkbox
+        id="zotero-prefpane-__addonRef__-mimoEnableThoughts"
+        preference="extensions.zotero.__addonRef__.mimoEnableThoughts"
+      />
+      <label data-l10n-id="pref-thinking-budget" style="margin-left: 20px"
+        >Thinking Budget:</label
+      >
+      <html:input
+        type="number"
+        id="zotero-prefpane-__addonRef__-mimoThinkingBudget"
+        preference="extensions.zotero.__addonRef__.mimoThinkingBudget"
+        style="width: 80px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-concurrency" style="width: 120px"
+        >Concurrency:</label
+      >
+      <html:input
+        type="number"
+        min="1"
+        max="10"
+        id="zotero-prefpane-__addonRef__-mimoConcurrency"
+        preference="extensions.zotero.__addonRef__.mimoConcurrency"
+        style="width: 70px"
+      />
+      <label data-l10n-id="pref-max-chars" style="margin-left: 20px"
+        >Max Chars:</label
+      >
+      <html:input
+        type="number"
+        min="10000"
+        max="2000000"
+        id="zotero-prefpane-__addonRef__-mimoMaxChars"
+        preference="extensions.zotero.__addonRef__.mimoMaxChars"
+        style="width: 110px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-rate-limit-count" style="width: 120px"
+        >Rate Limit:</label
+      >
+      <html:input
+        type="number"
+        min="1"
+        max="100"
+        id="zotero-prefpane-__addonRef__-mimoRateLimitCount"
+        preference="extensions.zotero.__addonRef__.mimoRateLimitCount"
+        style="width: 70px"
+      />
+      <label data-l10n-id="pref-rate-limit-per" style="margin-left: 5px"
+        >requests per</label
+      >
+      <html:input
+        type="number"
+        min="1"
+        max="60"
+        id="zotero-prefpane-__addonRef__-mimoRateLimitWindowMinutes"
+        preference="extensions.zotero.__addonRef__.mimoRateLimitWindowMinutes"
+        style="width: 70px"
+      />
+      <label data-l10n-id="pref-rate-limit-minutes" style="margin-left: 5px"
+        >minutes</label
+      >
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-attachment-filter" style="width: 120px"
+        >PDF Filter:</label
+      >
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-mimoAttachmentFilter"
+        preference="extensions.zotero.__addonRef__.mimoAttachmentFilter"
+        style="width: 250px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-max-file-size" style="width: 120px"
+        >Max File Size:</label
+      >
+      <html:input
+        type="number"
+        min="0"
+        max="500"
+        id="zotero-prefpane-__addonRef__-mimoMaxFileSizeMB"
+        preference="extensions.zotero.__addonRef__.mimoMaxFileSizeMB"
+        style="width: 70px"
+      />
+      <label data-l10n-id="pref-max-file-size-help" style="margin-left: 5px"
+        >MB (0=no limit)</label
+      >
+      <label data-l10n-id="pref-max-pages" style="margin-left: 20px"
+        >Max Pages:</label
+      >
+      <html:input
+        type="number"
+        min="0"
+        max="10000"
+        id="zotero-prefpane-__addonRef__-mimoMaxPageCount"
+        preference="extensions.zotero.__addonRef__.mimoMaxPageCount"
+        style="width: 70px"
+      />
+      <label data-l10n-id="pref-no-limit-help" style="margin-left: 5px"
+        >(0=no limit)</label
+      >
+    </hbox>
+
+    <hbox align="center">
+      <label data-l10n-id="pref-skip-existing-summary" style="width: 120px"
+        >Skip Summarized:</label
+      >
+      <checkbox
+        id="zotero-prefpane-__addonRef__-mimoSkipExistingSummary"
+        preference="extensions.zotero.__addonRef__.mimoSkipExistingSummary"
+      />
+      <label data-l10n-id="pref-retry-transient" style="margin-left: 20px"
+        >Retry on transient errors:</label
+      >
+      <html:input
+        type="number"
+        min="0"
+        max="10"
+        id="zotero-prefpane-__addonRef__-mimoRetryOnTransientErrors"
+        preference="extensions.zotero.__addonRef__.mimoRetryOnTransientErrors"
+        style="width: 60px"
+      />
+      <label data-l10n-id="pref-times" style="margin-left: 5px">times</label>
+    </hbox>
+
+    <vbox>
+      <label data-l10n-id="pref-prompt">Prompt Template:</label>
+      <html:textarea
+        id="zotero-prefpane-__addonRef__-mimoPrompt"
+        preference="extensions.zotero.__addonRef__.mimoPrompt"
         rows="8"
         style="width: 100%"
       />

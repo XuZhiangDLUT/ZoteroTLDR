@@ -5,13 +5,13 @@
 
 [English](./README.md)
 
-一个 Zotero 7 插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native** 和 **OpenAI Compatible** 两套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
+一个 Zotero 7 插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native**、**OpenAI Compatible** 和 **MiMo Token Plan** 三套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
 
 ## 功能特点
 
 - **AI 摘要生成**：右键 → "ZoteroTLDR: AI 总结"，一键生成结构化摘要。
-- **双 Provider 配置**：Gemini Native 与 OpenAI Compatible 参数互不覆盖，便于快速切换。
-- **远端 PDF 上传**：Gemini Native 使用 Gemini `inlineData`；OpenAI Compatible 使用 chat-time `input_file` 上传，适配 ds2api/cliproxyapi 链路。
+- **三 Provider 配置**：Gemini Native、OpenAI Compatible 与 MiMo Token Plan 参数互不覆盖，便于快速切换。
+- **远端 PDF 上传 / 本地文本模式**：Gemini Native 使用 Gemini `inlineData`；OpenAI Compatible 使用 chat-time `input_file` 上传，适配 ds2api/cliproxyapi 链路；MiMo Token Plan 默认使用本地文本提取并复用 OpenAI 兼容流式 chat 通道。
 - **流式思考与输出**：Provider 支持时，思考/推理内容和最终正文会分流显示。
 - **独立处理每个 PDF**：一个条目有多个 PDF 时，每个 PDF 生成独立笔记。
 - **PDF 过滤**：支持按文件名过滤，使用 glob 模式（支持 AND/OR/NOT）。
@@ -33,7 +33,7 @@
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-`v0.3.2` 发布到 GitHub 且 `updates/update.json` 提交后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
+`v0.3.4` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
 
 ## 快速开始
 
@@ -47,22 +47,22 @@ https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.js
 
 ### Provider 默认参数
 
-| 设置项         | Gemini Native                  | OpenAI Compatible                      |
-| -------------- | ------------------------------ | -------------------------------------- |
-| API Base URL   | `https://x666.me/v1`           | `https://cpa.20020519.xyz/v1`          |
-| 模型           | `gemini-2.5-pro-1m`            | `ds2api-openai/deepseek-v4-pro-search` |
-| PDF 解析模式   | 远端上传                       | 远端上传                               |
-| 远端 PDF 上传  | Gemini `inlineData`            | Chat `input_file` 内联上传             |
-| 温度           | `0.2`                          | `0.2`                                  |
-| 最大输出 Token | `65536`                        | `1000000`                              |
-| 启用思考模式   | `true`                         | `true`                                 |
-| 思考预算       | `-1`                           | `-1`                                   |
-| 并发数         | `1`                            | `5`                                    |
-| 最大字符数     | `800000`                       | `1000000`                              |
-| 速率限制       | `20` 次 / `5` 分钟             | `100` 次 / `1` 分钟                    |
-| 最大文件大小   | `25 MB`                        | `80 MB`                                |
-| 最大页数       | `50`                           | `50`                                   |
-| PDF 过滤       | `!* - mono.pdf, !* - dual.pdf` | `!* - mono.pdf, !* - dual.pdf`         |
+| 设置项         | Gemini Native                  | OpenAI Compatible                      | MiMo Token Plan                           |
+| -------------- | ------------------------------ | -------------------------------------- | ----------------------------------------- |
+| API Base URL   | `https://x666.me/v1`           | `https://cpa.20020519.xyz/v1`          | `https://token-plan-cn.xiaomimimo.com/v1` |
+| 模型           | `gemini-2.5-pro-1m`            | `ds2api-openai/deepseek-v4-pro-search` | `mimo-v2.5-pro`                           |
+| PDF 解析模式   | 远端上传                       | 远端上传                               | 本地文本提取                              |
+| 远端 PDF 上传  | Gemini `inlineData`            | Chat `input_file` 内联上传             | 默认不启用                                |
+| 温度           | `0.2`                          | `0.2`                                  | `0.2`                                     |
+| 最大输出 Token | `65536`                        | `1000000`                              | `128000`                                  |
+| 启用思考模式   | `true`                         | `true`                                 | `true`                                    |
+| 思考预算       | `-1`                           | `-1`                                   | `-1`                                      |
+| 并发数         | `1`                            | `5`                                    | `2`                                       |
+| 最大字符数     | `800000`                       | `1000000`                              | `1000000`                                 |
+| 速率限制       | `20` 次 / `5` 分钟             | `100` 次 / `1` 分钟                    | `100` 次 / `1` 分钟                       |
+| 最大文件大小   | `25 MB`                        | `80 MB`                                | `80 MB`                                   |
+| 最大页数       | `50`                           | `50`                                   | `50`                                      |
+| PDF 过滤       | `!* - mono.pdf, !* - dual.pdf` | `!* - mono.pdf, !* - dual.pdf`         | `!* - mono.pdf, !* - dual.pdf`            |
 
 设置界面只显示当前启用 Provider 的相关配置。
 
@@ -403,6 +403,7 @@ async function onStartup() {
 1. **流式输出（SSE）作为“保活”与进度输出**
    - Gemini Native 远端 PDF 模式使用 Gemini 流式接口：`:streamGenerateContent?alt=sse`
    - OpenAI Compatible 远端 PDF 模式使用 `/chat/completions` 且设置 `stream: true`
+   - MiMo Token Plan 复用 OpenAI 兼容 `/chat/completions` 流式路径，通过 `api-key` 传递密钥，默认使用本地文本提取
    - 通过 `ReadableStream` 逐行解析 `data: {...json...}`（`src/llm/providers.ts`）
    - 把每个 chunk 通过 `onStreamChunk(chunk, isThought)` 回传，任务队列面板可实时更新
 

@@ -21,7 +21,10 @@ export function setPref<K extends keyof PluginPrefsMap>(
   return Zotero.Prefs.set(`${PREFS_PREFIX}.${key}`, value, true);
 }
 
-export type LLMProvider = "gemini-native" | "openai-compatible";
+export type LLMProvider =
+  | "gemini-native"
+  | "openai-compatible"
+  | "mimo-token-plan";
 
 /**
  * PDF 解析模式
@@ -116,20 +119,48 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, ProviderDefaults> = {
     rateLimitWindowMinutes: 1,
     prompt: "",
   },
+  "mimo-token-plan": {
+    apiBase: "https://token-plan-cn.xiaomimimo.com/v1",
+    apiKey: "",
+    model: "mimo-v2.5-pro",
+    temperature: 0.2,
+    maxOutputTokens: 128000,
+    pdfParseMode: "local",
+    enableThoughts: true,
+    thinkingBudget: -1,
+    concurrency: 2,
+    maxChars: 1000000,
+    attachmentFilter: "!* - mono.pdf, !* - dual.pdf",
+    maxFileSizeMB: 80,
+    maxPageCount: 50,
+    skipExistingSummary: true,
+    retryOnTransientErrors: 2,
+    rateLimitCount: 100,
+    rateLimitWindowMinutes: 1,
+    prompt: "",
+  },
 };
 
-const PROVIDER_PREFIX: Record<LLMProvider, "gemini" | "openaiCompatible"> = {
+const PROVIDER_PREFIX: Record<
+  LLMProvider,
+  "gemini" | "openaiCompatible" | "mimo"
+> = {
   "gemini-native": "gemini",
   "openai-compatible": "openaiCompatible",
+  "mimo-token-plan": "mimo",
 };
 
 const PROVIDER_LABEL: Record<LLMProvider, string> = {
   "gemini-native": "Gemini Native",
   "openai-compatible": "OpenAI Compatible",
+  "mimo-token-plan": "MiMo Token Plan",
 };
 
 function normalizeProvider(value: unknown): LLMProvider {
-  return value === "openai-compatible" ? "openai-compatible" : "gemini-native";
+  if (value === "openai-compatible" || value === "mimo-token-plan") {
+    return value;
+  }
+  return "gemini-native";
 }
 
 function normalizePdfParseMode(value: unknown): PdfParseMode {

@@ -36,6 +36,7 @@ export type FluentMessageId =
   | 'pref-pdf-parse-mode-remote'
   | 'pref-prompt'
   | 'pref-provider-gemini'
+  | 'pref-provider-mimo'
   | 'pref-provider-openai-compatible'
   | 'pref-rate-limit-count'
   | 'pref-rate-limit-help'
