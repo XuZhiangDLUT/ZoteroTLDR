@@ -43,13 +43,21 @@ export function getChatCompletionsUrl(prefs: AddonPrefs): string {
 function isOpenAIChatProvider(prefs: AddonPrefs): boolean {
   return (
     prefs.provider === "openai-compatible" ||
-    prefs.provider === "mimo-token-plan"
+    prefs.provider === "mimo-token-plan" ||
+    prefs.provider === "mimo-balance-api"
+  );
+}
+
+function isMiMoProvider(prefs: AddonPrefs): boolean {
+  return (
+    prefs.provider === "mimo-token-plan" ||
+    prefs.provider === "mimo-balance-api"
   );
 }
 
 function getOpenAIChatAuthHeaders(prefs: AddonPrefs): Record<string, string> {
   const apiKey = getApiKey(prefs);
-  if (prefs.provider === "mimo-token-plan") {
+  if (isMiMoProvider(prefs)) {
     return { "api-key": apiKey };
   }
   return { Authorization: `Bearer ${apiKey}` };
@@ -80,7 +88,7 @@ export function buildOpenAICompatibleChatRequest(opts: {
 
   const maxOutputTokens = opts.maxOutputTokens ?? prefs.maxOutputTokens;
   if (maxOutputTokens !== undefined) {
-    if (prefs.provider === "mimo-token-plan") {
+    if (isMiMoProvider(prefs)) {
       body.max_completion_tokens = maxOutputTokens;
     } else {
       body.max_tokens = maxOutputTokens;
@@ -321,7 +329,7 @@ function applyOpenAICompatibleThinkingConfig(
   prefs: AddonPrefs,
 ): void {
   if (!prefs.enableThoughts) return;
-  if (prefs.provider === "mimo-token-plan") return;
+  if (isMiMoProvider(prefs)) return;
 
   const thinking: Record<string, unknown> = { type: "enabled" };
   if (prefs.thinkingBudget > 0) {
@@ -335,9 +343,9 @@ async function summarizeWithOpenAICompatibleRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt, pdfBase64, fileName, onStreamChunk } = opts;
-  if (prefs.provider === "mimo-token-plan") {
+  if (isMiMoProvider(prefs)) {
     throw new Error(
-      "MiMo Token Plan 暂不支持远端 PDF 直传，请将 PDF 解析模式切换为本地（提取文本）。",
+      `${prefs.providerLabel} 暂不支持远端 PDF 直传，请将 PDF 解析模式切换为本地（提取文本）。`,
     );
   }
 

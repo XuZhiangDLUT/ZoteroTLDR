@@ -5,13 +5,13 @@
 
 [简体中文](./README-zhCN.md)
 
-A Zotero 7 plugin that generates structured AI summaries for PDF papers. It supports three provider profiles, **Gemini Native**, **OpenAI Compatible**, and **MiMo Token Plan**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
+A Zotero 7 plugin that generates structured AI summaries for PDF papers. It supports four provider profiles, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, and **MiMo Balance API**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
 
 ## Features
 
 - **AI Summarization**: Right-click → "ZoteroTLDR: AI 总结" to generate structured summaries.
-- **Three Provider Profiles**: Switch between Gemini Native, OpenAI Compatible, and MiMo Token Plan without overwriting each profile's defaults.
-- **Remote PDF Upload / Local Text Mode**: Gemini Native uses Gemini `inlineData`; OpenAI Compatible uses chat-time `input_file` upload for ds2api/cliproxyapi-style gateways; MiMo Token Plan defaults to local text extraction over OpenAI-compatible chat streaming.
+- **Four Provider Profiles**: Switch between Gemini Native, OpenAI Compatible, MiMo Token Plan, and MiMo Balance API without overwriting each profile's defaults.
+- **Remote PDF Upload / Local Text Mode**: Gemini Native uses Gemini `inlineData`; OpenAI Compatible uses chat-time `input_file` upload for ds2api/cliproxyapi-style gateways; MiMo providers default to local text extraction over OpenAI-compatible chat streaming.
 - **Streaming Thoughts and Output**: Streams reasoning/thinking chunks separately from final content when the provider exposes them.
 - **Per-PDF Processing**: Each PDF in an item generates its own separate note.
 - **PDF Filtering**: Filter PDFs by filename with glob patterns (supports AND/OR/NOT).
@@ -33,7 +33,7 @@ Stable builds embed this Zotero update URL:
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-After `v0.3.4` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
+After `v0.3.5` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
 
 ## Quick Start
 
@@ -47,22 +47,22 @@ After `v0.3.4` is released on GitHub and `updates/update.json` is committed by t
 
 ### Provider Defaults
 
-| Setting           | Gemini Native                  | OpenAI Compatible                      | MiMo Token Plan                           |
-| ----------------- | ------------------------------ | -------------------------------------- | ----------------------------------------- |
-| API Base URL      | `https://x666.me/v1`           | `https://cpa.20020519.xyz/v1`          | `https://token-plan-cn.xiaomimimo.com/v1` |
-| Model             | `gemini-2.5-pro-1m`            | `ds2api-openai/deepseek-v4-pro-search` | `mimo-v2.5-pro`                           |
-| PDF Parse Mode    | Remote upload                  | Remote upload                          | Local text extraction                     |
-| Remote PDF Upload | Gemini `inlineData`            | Chat `input_file` inline upload        | Not enabled by default                    |
-| Temperature       | `0.2`                          | `0.2`                                  | `0.2`                                     |
-| Max Output Tokens | `65536`                        | `1000000`                              | `128000`                                  |
-| Enable Thoughts   | `true`                         | `true`                                 | `true`                                    |
-| Thinking Budget   | `-1`                           | `-1`                                   | `-1`                                      |
-| Concurrency       | `1`                            | `5`                                    | `2`                                       |
-| Max Characters    | `800000`                       | `1000000`                              | `1000000`                                 |
-| Rate Limit        | `20` per `5` minutes           | `100` per `1` minute                   | `100` per `1` minute                      |
-| Max File Size     | `25 MB`                        | `80 MB`                                | `80 MB`                                   |
-| Max Pages         | `50`                           | `50`                                   | `50`                                      |
-| PDF Filter        | `!* - mono.pdf, !* - dual.pdf` | `!* - mono.pdf, !* - dual.pdf`         | `!* - mono.pdf, !* - dual.pdf`            |
+| Setting           | Gemini Native                  | OpenAI Compatible                      | MiMo Token Plan                           | MiMo Balance API                |
+| ----------------- | ------------------------------ | -------------------------------------- | ----------------------------------------- | ------------------------------- |
+| API Base URL      | `https://x666.me/v1`           | `https://cpa.20020519.xyz/v1`          | `https://token-plan-cn.xiaomimimo.com/v1` | `https://api.xiaomimimo.com/v1` |
+| Model             | `gemini-2.5-pro-1m`            | `ds2api-openai/deepseek-v4-pro-search` | `mimo-v2.5-pro`                           | `mimo-v2.5-pro`                 |
+| PDF Parse Mode    | Remote upload                  | Remote upload                          | Local text extraction                     | Local text extraction           |
+| Remote PDF Upload | Gemini `inlineData`            | Chat `input_file` inline upload        | Not enabled by default                    | Not enabled by default          |
+| Temperature       | `0.2`                          | `0.2`                                  | `0.2`                                     | `0.2`                           |
+| Max Output Tokens | `65536`                        | `1000000`                              | `128000`                                  | `128000`                        |
+| Enable Thoughts   | `true`                         | `true`                                 | `true`                                    | `true`                          |
+| Thinking Budget   | `-1`                           | `-1`                                   | `-1`                                      | `-1`                            |
+| Concurrency       | `1`                            | `5`                                    | `2`                                       | `2`                             |
+| Max Characters    | `800000`                       | `1000000`                              | `1000000`                                 | `1000000`                       |
+| Rate Limit        | `20` per `5` minutes           | `100` per `1` minute                   | `100` per `1` minute                      | `100` per `1` minute            |
+| Max File Size     | `25 MB`                        | `80 MB`                                | `80 MB`                                   | `80 MB`                         |
+| Max Pages         | `50`                           | `50`                                   | `50`                                      | `50`                            |
+| PDF Filter        | `!* - mono.pdf, !* - dual.pdf` | `!* - mono.pdf, !* - dual.pdf`         | `!* - mono.pdf, !* - dual.pdf`            | `!* - mono.pdf, !* - dual.pdf`  |
 
 Only the active provider's settings are shown in the preferences panel.
 
@@ -403,7 +403,7 @@ When using a proxy/gateway (e.g. Cloudflare) for long remote PDF parsing, the re
 1. **Streamed response (SSE) to keep the connection alive**
    - Gemini Native remote PDF mode uses the Gemini streaming endpoint: `:streamGenerateContent?alt=sse`
    - OpenAI Compatible remote PDF mode uses `/chat/completions` with `stream: true`
-   - MiMo Token Plan reuses the OpenAI-compatible `/chat/completions` streaming path, sends the key via `api-key`, and defaults to local text extraction
+   - MiMo providers reuse the OpenAI-compatible `/chat/completions` streaming path, send the key via `api-key`, and default to local text extraction
    - Parse `data: {...json...}` incrementally via `ReadableStream` (`src/llm/providers.ts`)
    - Forward chunks through `onStreamChunk(chunk, isThought)` so the UI can update while the request is still running
 

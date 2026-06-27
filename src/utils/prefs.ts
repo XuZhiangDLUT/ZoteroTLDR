@@ -24,7 +24,8 @@ export function setPref<K extends keyof PluginPrefsMap>(
 export type LLMProvider =
   | "gemini-native"
   | "openai-compatible"
-  | "mimo-token-plan";
+  | "mimo-token-plan"
+  | "mimo-balance-api";
 
 /**
  * PDF 解析模式
@@ -139,25 +140,51 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, ProviderDefaults> = {
     rateLimitWindowMinutes: 1,
     prompt: "",
   },
+  "mimo-balance-api": {
+    apiBase: "https://api.xiaomimimo.com/v1",
+    apiKey: "",
+    model: "mimo-v2.5-pro",
+    temperature: 0.2,
+    maxOutputTokens: 128000,
+    pdfParseMode: "local",
+    enableThoughts: true,
+    thinkingBudget: -1,
+    concurrency: 2,
+    maxChars: 1000000,
+    attachmentFilter: "!* - mono.pdf, !* - dual.pdf",
+    maxFileSizeMB: 80,
+    maxPageCount: 50,
+    skipExistingSummary: true,
+    retryOnTransientErrors: 2,
+    rateLimitCount: 100,
+    rateLimitWindowMinutes: 1,
+    prompt: "",
+  },
 };
 
 const PROVIDER_PREFIX: Record<
   LLMProvider,
-  "gemini" | "openaiCompatible" | "mimo"
+  "gemini" | "openaiCompatible" | "mimo" | "mimoBalance"
 > = {
   "gemini-native": "gemini",
   "openai-compatible": "openaiCompatible",
   "mimo-token-plan": "mimo",
+  "mimo-balance-api": "mimoBalance",
 };
 
 const PROVIDER_LABEL: Record<LLMProvider, string> = {
   "gemini-native": "Gemini Native",
   "openai-compatible": "OpenAI Compatible",
   "mimo-token-plan": "MiMo Token Plan",
+  "mimo-balance-api": "MiMo Balance API",
 };
 
 function normalizeProvider(value: unknown): LLMProvider {
-  if (value === "openai-compatible" || value === "mimo-token-plan") {
+  if (
+    value === "openai-compatible" ||
+    value === "mimo-token-plan" ||
+    value === "mimo-balance-api"
+  ) {
     return value;
   }
   return "gemini-native";

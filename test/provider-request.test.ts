@@ -55,6 +55,29 @@ test("MiMo Token Plan uses api-key auth and max_completion_tokens", () => {
   assert.equal(request.body.extra_body, undefined);
 });
 
+test("MiMo Balance API uses api-key auth and max_completion_tokens", () => {
+  const request = buildOpenAICompatibleChatRequest({
+    prefs: makePrefs({
+      provider: "mimo-balance-api",
+      providerLabel: "MiMo Balance API",
+      apiKey: "sk-test",
+      apiBase: "https://api.xiaomimimo.com/v1",
+      model: "mimo-v2.5-pro",
+      maxOutputTokens: 128000,
+      enableThoughts: true,
+    }),
+    messages: [{ role: "user", content: "pong" }],
+    stream: true,
+  });
+
+  assert.equal(request.url, "https://api.xiaomimimo.com/v1/chat/completions");
+  assert.equal(request.headers["api-key"], "sk-test");
+  assert.equal(request.headers.Authorization, undefined);
+  assert.equal(request.body.max_completion_tokens, 128000);
+  assert.equal(request.body.max_tokens, undefined);
+  assert.equal(request.body.extra_body, undefined);
+});
+
 test("OpenAI-compatible provider keeps bearer auth and max_tokens", () => {
   const request = buildOpenAICompatibleChatRequest({
     prefs: makePrefs({

@@ -37,6 +37,7 @@ export type FluentMessageId =
   | 'pref-prompt'
   | 'pref-provider-gemini'
   | 'pref-provider-mimo'
+  | 'pref-provider-mimo-balance'
   | 'pref-provider-openai-compatible'
   | 'pref-rate-limit-count'
   | 'pref-rate-limit-help'

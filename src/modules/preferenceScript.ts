@@ -51,6 +51,11 @@ function initSelectElements() {
       pref: "mimoPdfParseMode",
       fallback: "local",
     },
+    {
+      id: "mimoBalancePdfParseMode",
+      pref: "mimoBalancePdfParseMode",
+      fallback: "local",
+    },
   ];
 
   for (const { id, pref, fallback } of selectPrefs) {
@@ -83,6 +88,9 @@ function updateProviderSettingsVisibility() {
   const mimoSettings = doc?.querySelector(
     `#zotero-prefpane-${config.addonRef}-mimoSettings`,
   ) as HTMLElement | null;
+  const mimoBalanceSettings = doc?.querySelector(
+    `#zotero-prefpane-${config.addonRef}-mimoBalanceSettings`,
+  ) as HTMLElement | null;
 
   const activeProvider = activeProviderSelect?.value || "gemini-native";
   if (geminiSettings) {
@@ -93,6 +101,9 @@ function updateProviderSettingsVisibility() {
   }
   if (mimoSettings) {
     mimoSettings.hidden = activeProvider !== "mimo-token-plan";
+  }
+  if (mimoBalanceSettings) {
+    mimoBalanceSettings.hidden = activeProvider !== "mimo-balance-api";
   }
 }
 

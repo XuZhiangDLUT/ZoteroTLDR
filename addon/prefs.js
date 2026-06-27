@@ -121,6 +121,46 @@ pref(
 {content}`,
 );
 
+// MiMo 充值余额 API 配置（OpenAI 兼容 /chat/completions）
+pref("mimoBalanceApiBase", "https://api.xiaomimimo.com/v1");
+pref("mimoBalanceApiKey", "");
+pref("mimoBalanceModel", "mimo-v2.5-pro");
+pref("mimoBalanceTemperature", "0.2");
+pref("mimoBalanceMaxOutputTokens", "128000");
+pref("mimoBalancePdfParseMode", "local");
+pref("mimoBalanceEnableThoughts", true);
+pref("mimoBalanceThinkingBudget", -1);
+pref("mimoBalanceConcurrency", 2);
+pref("mimoBalanceMaxChars", "1000000");
+pref("mimoBalanceAttachmentFilter", "!* - mono.pdf, !* - dual.pdf");
+pref("mimoBalanceMaxFileSizeMB", 80);
+pref("mimoBalanceMaxPageCount", 50);
+pref("mimoBalanceSkipExistingSummary", true);
+pref("mimoBalanceRetryOnTransientErrors", 2);
+pref("mimoBalanceRateLimitCount", 100);
+pref("mimoBalanceRateLimitWindowMinutes", 1);
+pref(
+  "mimoBalancePrompt",
+  `请严格按照原文的章节顺序，用简体中文对所提供的文章进行详细的、逐节的解释。请遵循以下结构：
+
+**对于文章的每一个小节：**
+
+1.  **分点总结该小节的文本内容。**
+    * 清晰、简洁地概括该小节的核心论点和主要信息。
+
+2.  **解释该小节中出现的每一张图片。**
+    * **图片描述：** 详细描述图片的视觉元素，包括人物、物体、场景、图表、颜色和构图等。
+    * **图片的角色与重要性：** 深入解释该图片如何与本小节的文本内容相关联。说明它是如何作为证据、示例、视觉化数据或情感补充，来支持、阐明或强调该小节所提出的观点的。
+
+请确保整个解释过程与文章的原始流程完全一致，从而为读者提供一个与原文同步的、清晰的深度解读。
+
+**论文信息:**
+- 题目：{title}
+- 摘要：{abstract}
+- 正文：
+{content}`,
+);
+
 // 兼容旧版本的单套配置键。新代码会把这些作为 Gemini Native 的迁移来源。
 pref("apiBase", "https://x666.me/v1");
 pref("apiKey", "");
