@@ -27,6 +27,8 @@ export type LLMProvider =
   | "mimo-token-plan"
   | "mimo-balance-api";
 
+export const DEFAULT_PROVIDER: LLMProvider = "mimo-balance-api";
+
 /**
  * PDF 解析模式
  */
@@ -179,15 +181,16 @@ const PROVIDER_LABEL: Record<LLMProvider, string> = {
   "mimo-balance-api": "MiMo Balance API",
 };
 
-function normalizeProvider(value: unknown): LLMProvider {
+export function normalizeProvider(value: unknown): LLMProvider {
   if (
+    value === "gemini-native" ||
     value === "openai-compatible" ||
     value === "mimo-token-plan" ||
     value === "mimo-balance-api"
   ) {
     return value;
   }
-  return "gemini-native";
+  return DEFAULT_PROVIDER;
 }
 
 function normalizePdfParseMode(value: unknown): PdfParseMode {

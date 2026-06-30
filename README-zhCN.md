@@ -33,7 +33,7 @@
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-`v0.3.5` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
+`v0.3.6` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
 
 ## 快速开始
 

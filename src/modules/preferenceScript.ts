@@ -1,7 +1,7 @@
 import { config } from "../../package.json";
 import { AISummaryModule } from "./aiSummary";
 import { getString } from "../utils/locale";
-import { getPref, setPref } from "../utils/prefs";
+import { DEFAULT_PROVIDER, getPref, setPref } from "../utils/prefs";
 
 export async function registerPrefsScripts(_window: Window) {
   try {
@@ -35,7 +35,11 @@ export async function registerPrefsScripts(_window: Window) {
 function initSelectElements() {
   const doc = addon.data.prefs!.window.document;
   const selectPrefs = [
-    { id: "activeProvider", pref: "activeProvider", fallback: "gemini-native" },
+    {
+      id: "activeProvider",
+      pref: "activeProvider",
+      fallback: DEFAULT_PROVIDER,
+    },
     {
       id: "geminiPdfParseMode",
       pref: "geminiPdfParseMode",
@@ -65,12 +69,15 @@ function initSelectElements() {
 
     if (!select) continue;
     select.value = (getPref(pref as any) as string) || fallback;
-    select.addEventListener("change", () => {
+    const syncSelectPref = () => {
       setPref(pref as any, select.value);
       if (pref === "activeProvider") {
         updateProviderSettingsVisibility();
       }
-    });
+    };
+    select.addEventListener("input", syncSelectPref);
+    select.addEventListener("change", syncSelectPref);
+    select.addEventListener("command", syncSelectPref);
   }
 }
 
@@ -92,7 +99,7 @@ function updateProviderSettingsVisibility() {
     `#zotero-prefpane-${config.addonRef}-mimoBalanceSettings`,
   ) as HTMLElement | null;
 
-  const activeProvider = activeProviderSelect?.value || "gemini-native";
+  const activeProvider = activeProviderSelect?.value || DEFAULT_PROVIDER;
   if (geminiSettings) {
     geminiSettings.hidden = activeProvider !== "gemini-native";
   }

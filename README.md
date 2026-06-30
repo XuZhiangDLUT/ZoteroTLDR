@@ -33,7 +33,7 @@ Stable builds embed this Zotero update URL:
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-After `v0.3.5` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
+After `v0.3.6` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
 
 ## Quick Start
 

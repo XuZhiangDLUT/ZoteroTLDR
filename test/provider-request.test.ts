@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildOpenAICompatibleChatRequest } from "../src/llm/providers";
+import { DEFAULT_PROVIDER, normalizeProvider } from "../src/utils/prefs";
 import type { AddonPrefs } from "../src/utils/prefs";
 
 function makePrefs(overrides: Partial<AddonPrefs> = {}): AddonPrefs {
@@ -53,6 +54,13 @@ test("MiMo Token Plan uses api-key auth and max_completion_tokens", () => {
   assert.equal(request.body.max_completion_tokens, 128000);
   assert.equal(request.body.max_tokens, undefined);
   assert.equal(request.body.extra_body, undefined);
+});
+
+test("default provider is MiMo Balance API", () => {
+  assert.equal(DEFAULT_PROVIDER, "mimo-balance-api");
+  assert.equal(normalizeProvider(undefined), "mimo-balance-api");
+  assert.equal(normalizeProvider("legacy-provider"), "mimo-balance-api");
+  assert.equal(normalizeProvider("gemini-native"), "gemini-native");
 });
 
 test("MiMo Balance API uses api-key auth and max_completion_tokens", () => {

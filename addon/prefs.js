@@ -1,5 +1,5 @@
 // 当前启用的 Provider
-pref("activeProvider", "gemini-native");
+pref("activeProvider", "mimo-balance-api");
 
 // Gemini Native 配置
 pref("geminiApiBase", "https://x666.me/v1");
