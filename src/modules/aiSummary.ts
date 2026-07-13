@@ -54,7 +54,13 @@ const rateLimiter = new RateLimiter();
 /**
  * 任务状态
  */
-type TaskStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+type TaskStatus =
+  | "pending"
+  | "retrying"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 /**
  * 任务信息（内部使用）
@@ -67,6 +73,7 @@ interface QueueTask<T> {
   resolve: () => void;
   reject: (error: Error) => void;
   error?: string;
+  retryMessage?: string;
   startTime?: number;
   endTime?: number;
   output: string; // 任务输出内容
@@ -81,6 +88,7 @@ interface TaskInfo {
   displayName: string;
   status: TaskStatus;
   error?: string;
+  retryMessage?: string;
   startTime?: number;
   endTime?: number;
   output: string;
@@ -98,9 +106,23 @@ type QueueEventListener = () => void;
 type DisplayNameExtractor<T> = (data: T) => string;
 
 /**
+ * 请求已失败但任务仍应保留在队列中等待重试。
+ */
+export class RetryScheduledError extends Error {
+  constructor(
+    message: string,
+    readonly attempt: number,
+    readonly maxRetries: number,
+  ) {
+    super(message);
+    this.name = "RetryScheduledError";
+  }
+}
+
+/**
  * 判断是否为瞬态错误（用于延后重试）
  */
-function isTransientErrorMessage(msg: string): boolean {
+export function isTransientErrorMessage(msg: string): boolean {
   const lowered = msg.toLowerCase();
   return (
     lowered.includes("error in input stream") ||
@@ -113,14 +135,29 @@ function isTransientErrorMessage(msg: string): boolean {
     lowered.includes("etimeout") ||
     lowered.includes("sse stream error") ||
     lowered.includes("empty result") ||
+    lowered.includes("empty summary result") ||
     lowered.includes("invalid authentication credentials") // 部分代理把认证失败包装成 429/upstream_error
   );
 }
 
 /**
+ * 最终正文为空时不能写入注释，也不能将任务记为完成。
+ */
+function requireSummaryMarkdown(
+  result: SummarizeResult,
+  source: string,
+): string {
+  const markdown = result.markdown?.trim();
+  if (!markdown) {
+    throw new Error(`${source}未返回最终摘要 (empty summary result)`);
+  }
+  return markdown;
+}
+
+/**
  * 全局任务队列 - 跨调用的并发控制
  */
-class GlobalTaskQueue<T> {
+export class GlobalTaskQueue<T> {
   private queue: QueueTask<T>[] = [];
   private runningTasks: Map<number, QueueTask<T>> = new Map();
   private completedTasks: QueueTask<T>[] = [];
@@ -202,6 +239,7 @@ class GlobalTaskQueue<T> {
         id: task.id,
         displayName: task.displayName,
         status: task.status,
+        retryMessage: task.retryMessage,
         startTime: task.startTime,
         output: task.output,
         thoughtOutput: task.thoughtOutput,
@@ -214,6 +252,7 @@ class GlobalTaskQueue<T> {
         id: task.id,
         displayName: task.displayName,
         status: task.status,
+        retryMessage: task.retryMessage,
         output: task.output,
         thoughtOutput: task.thoughtOutput,
       });
@@ -227,6 +266,7 @@ class GlobalTaskQueue<T> {
         displayName: task.displayName,
         status: task.status,
         error: task.error,
+        retryMessage: task.retryMessage,
         startTime: task.startTime,
         endTime: task.endTime,
         output: task.output,
@@ -358,23 +398,41 @@ class GlobalTaskQueue<T> {
     }
 
     task.status = "running";
+    task.retryMessage = undefined;
+    task.endTime = undefined;
     task.startTime = Date.now();
     this.runningTasks.set(task.id, task);
     this.emitEvent();
 
+    let retryScheduled = false;
     try {
       await this.worker(task.data, task.id);
       task.status = "completed";
+      task.error = undefined;
+      task.retryMessage = undefined;
       task.resolve();
     } catch (e) {
-      task.status = "failed";
-      task.error = e instanceof Error ? e.message : String(e);
-      task.reject(e instanceof Error ? e : new Error(String(e)));
+      if (e instanceof RetryScheduledError) {
+        retryScheduled = true;
+        task.status = "retrying";
+        task.retryMessage = `瞬态错误，等待重试 (${e.attempt}/${e.maxRetries})：${e.message}`;
+        task.error = undefined;
+        task.startTime = undefined;
+        task.output = "";
+        task.thoughtOutput = "";
+        this.queue.push(task);
+      } else {
+        task.status = "failed";
+        task.error = e instanceof Error ? e.message : String(e);
+        task.reject(e instanceof Error ? e : new Error(String(e)));
+      }
     } finally {
       task.endTime = Date.now();
       this.runningTasks.delete(task.id);
-      this.completedTasks.push(task);
-      this.trimCompletedHistory();
+      if (!retryScheduled) {
+        this.completedTasks.push(task);
+        this.trimCompletedHistory();
+      }
       this.emitEvent();
       this.tryRunNext();
     }
@@ -1027,9 +1085,7 @@ async function summarizeSinglePdf(
           prefs,
           onStreamChunk,
         });
-        if (!result.markdown?.trim()) {
-          throw new Error("本地解析返回空摘要，请检查 API 返回或提示词。");
-        }
+        requireSummaryMarkdown(result, "本地解析");
         usedLocalFallback = true;
       } else {
         // 其他错误直接抛出
@@ -1037,12 +1093,8 @@ async function summarizeSinglePdf(
       }
     }
 
-    // 检查远端解析是否返回了空结果（流式连接可能在生成正文前被关闭，例如代理超时）
-    if (!result.markdown?.trim()) {
-      throw new Error(
-        "远端解析超时：流式连接在生成正文前关闭 (timeout / empty result)",
-      );
-    }
+    // 仅有思考流或没有任何流都不能视为完成。
+    requireSummaryMarkdown(result, "远端解析");
   } else {
     // 本地解析模式：使用本地提取的文本
     const template = prefs.prompt?.trim() || DEFAULT_PROMPT_TEMPLATE;
@@ -1061,15 +1113,14 @@ async function summarizeSinglePdf(
       prefs,
       onStreamChunk,
     });
-    if (!result.markdown?.trim()) {
-      throw new Error("本地解析返回空摘要，请检查 API 返回或提示词。");
-    }
+    requireSummaryMarkdown(result, "本地解析");
   }
 
   // 如果使用了 fallback，在结果中添加说明
+  const markdown = requireSummaryMarkdown(result, "摘要请求");
   const finalMarkdown = usedLocalFallback
-    ? `> ⚠️ 注意：由于 PDF 文件过大，已自动切换到本地解析模式\n\n${result.markdown}`
-    : result.markdown;
+    ? `> ⚠️ 注意：由于 PDF 文件过大，已自动切换到本地解析模式\n\n${markdown}`
+    : markdown;
 
   await saveChildNote(item, finalMarkdown, attachment.fileName, prefs);
 }
@@ -1124,11 +1175,8 @@ async function executeSummaryTask(
         progress: 100,
         type: "default",
       });
-      globalTaskQueue.submit({
-        ...taskData,
-        retryAttempts: nextAttempts,
-      });
-      return; // 不抛出，让当前任务视为完成，新的任务排到队尾
+      taskData.retryAttempts = nextAttempts;
+      throw new RetryScheduledError(errorMsg, nextAttempts, maxRetries);
     }
 
     pw.changeLine({
@@ -1577,6 +1625,7 @@ class TaskQueuePanel {
       const hasThought = task.thoughtOutput.length > 0;
       const hasOutput = task.output.length > 0;
       const hasError = Boolean(task.error);
+      const hasRetryMessage = Boolean(task.retryMessage);
       const isThoughtExpanded = this.expandedThoughtTasks.has(task.id);
       const isOutputExpanded = this.expandedOutputTasks.has(task.id);
       const isErrorExpanded = this.expandedErrorTasks.has(task.id);
@@ -1593,6 +1642,7 @@ class TaskQueuePanel {
           border-bottom: 1px solid #eee;
           ${isRunning ? "background-color: #e3f2fd;" : ""}
           ${task.status === "failed" ? "background-color: #ffebee;" : ""}
+          ${task.status === "retrying" ? "background-color: #fff8e1;" : ""}
           ${task.status === "cancelled" ? "background-color: #fff3e0;" : ""}
         ">
           <div style="
@@ -1628,9 +1678,10 @@ class TaskQueuePanel {
                 ${hasError ? ` · <span data-toggle-error="${task.id}" style="color: #c62828; cursor: pointer;">${isErrorExpanded ? "▼ 收起错误" : "▶ 展开错误"}</span>` : ""}
               </div>
               ${hasError ? `<div style="font-size: 11px; color: #c62828; margin-top: 2px; white-space: normal; word-break: break-word;">${this.escapeHtml(errorInline)}</div>` : ""}
+              ${hasRetryMessage ? `<div style="font-size: 11px; color: #8a6d00; margin-top: 2px; white-space: normal; word-break: break-word;">${this.escapeHtml(task.retryMessage || "")}</div>` : ""}
             </div>
             ${
-              task.status === "pending"
+              task.status === "pending" || task.status === "retrying"
                 ? `
               <button
                 data-cancel-task="${task.id}"
@@ -1849,6 +1900,8 @@ class TaskQueuePanel {
     switch (status) {
       case "pending":
         return { text: "等待中", color: "#ffc107" };
+      case "retrying":
+        return { text: "等待重试", color: "#ff9800" };
       case "running":
         return { text: "运行中", color: "#2196f3" };
       case "completed":
