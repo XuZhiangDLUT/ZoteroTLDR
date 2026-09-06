@@ -3,6 +3,12 @@ import { AISummaryModule } from "./aiSummary";
 import { getString } from "../utils/locale";
 import { DEFAULT_PROVIDER, getPref, setPref } from "../utils/prefs";
 
+interface PreferenceMenuList extends Element {
+  value: string;
+}
+
+const initializedMenuLists = new WeakSet<PreferenceMenuList>();
+
 export async function registerPrefsScripts(_window: Window) {
   try {
     (_window as any).MozXULElement?.insertFTLIfNeeded?.(
@@ -30,7 +36,7 @@ export async function registerPrefsScripts(_window: Window) {
 }
 
 /**
- * 初始化 select 元素的值（Zotero 7 需要手动处理）
+ * 初始化下拉控件的值（Zotero 7 需要手动处理）
  */
 function initSelectElements() {
   const doc = addon.data.prefs!.window.document;
@@ -65,19 +71,23 @@ function initSelectElements() {
   for (const { id, pref, fallback } of selectPrefs) {
     const select = doc?.querySelector(
       `#zotero-prefpane-${config.addonRef}-${id}`,
-    ) as HTMLSelectElement | null;
+    ) as PreferenceMenuList | null;
 
     if (!select) continue;
     select.value = (getPref(pref as any) as string) || fallback;
-    const syncSelectPref = () => {
-      setPref(pref as any, select.value);
-      if (pref === "activeProvider") {
-        updateProviderSettingsVisibility();
-      }
-    };
-    select.addEventListener("input", syncSelectPref);
-    select.addEventListener("change", syncSelectPref);
-    select.addEventListener("command", syncSelectPref);
+    if (initializedMenuLists.has(select)) continue;
+    initializedMenuLists.add(select);
+
+    select.addEventListener("command", () => {
+      const value = select.value;
+      // Let the native menulist close before changing preferences or layout.
+      addon.data.prefs?.window.setTimeout(() => {
+        setPref(pref as any, value);
+        if (pref === "activeProvider") {
+          updateProviderSettingsVisibility();
+        }
+      }, 0);
+    });
   }
 }
 
@@ -85,7 +95,7 @@ function updateProviderSettingsVisibility() {
   const doc = addon.data.prefs!.window.document;
   const activeProviderSelect = doc?.querySelector(
     `#zotero-prefpane-${config.addonRef}-activeProvider`,
-  ) as HTMLSelectElement | null;
+  ) as PreferenceMenuList | null;
   const geminiSettings = doc?.querySelector(
     `#zotero-prefpane-${config.addonRef}-geminiSettings`,
   ) as HTMLElement | null;

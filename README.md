@@ -1,11 +1,11 @@
 # Hanchen's Zotero TLDR
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
+[![zotero target version](https://img.shields.io/badge/Zotero-7--9-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
 [简体中文](./README-zhCN.md)
 
-A Zotero 7 plugin that generates structured AI summaries for PDF papers. It supports four provider profiles, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, and **MiMo Balance API**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
+A Zotero 7-9 plugin that generates structured AI summaries for PDF papers. It supports four provider profiles, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, and **MiMo Balance API**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
 
 ## Features
 
@@ -33,7 +33,7 @@ Stable builds embed this Zotero update URL:
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-After `v0.3.7` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
+After `v0.3.8` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
 
 ## Quick Start
 

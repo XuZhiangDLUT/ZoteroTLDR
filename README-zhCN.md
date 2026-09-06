@@ -1,11 +1,11 @@
 # Hanchen's Zotero TLDR
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
+[![zotero target version](https://img.shields.io/badge/Zotero-7--9-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
 [English](./README.md)
 
-一个 Zotero 7 插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native**、**OpenAI Compatible**、**MiMo Token Plan** 和 **MiMo 余额 API** 四套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
+一个兼容 Zotero 7-9 的插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native**、**OpenAI Compatible**、**MiMo Token Plan** 和 **MiMo 余额 API** 四套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
 
 ## 功能特点
 
@@ -33,7 +33,7 @@
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-`v0.3.7` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
+`v0.3.8` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
 
 ## 快速开始
 

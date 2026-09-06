@@ -12,28 +12,35 @@
       <label data-l10n-id="pref-active-provider" style="width: 140px"
         >Active Provider:</label
       >
-      <html:select
+      <menulist
         id="zotero-prefpane-__addonRef__-activeProvider"
         preference="extensions.zotero.__addonRef__.activeProvider"
+        native="true"
         style="width: 220px"
       >
-        <html:option value="gemini-native" data-l10n-id="pref-provider-gemini"
-          >Gemini Native</html:option
-        >
-        <html:option
-          value="openai-compatible"
-          data-l10n-id="pref-provider-openai-compatible"
-          >OpenAI Compatible</html:option
-        >
-        <html:option value="mimo-token-plan" data-l10n-id="pref-provider-mimo"
-          >MiMo Token Plan</html:option
-        >
-        <html:option
-          value="mimo-balance-api"
-          data-l10n-id="pref-provider-mimo-balance"
-          >MiMo Balance API</html:option
-        >
-      </html:select>
+        <menupopup>
+          <menuitem
+            value="gemini-native"
+            data-l10n-id="pref-provider-gemini"
+            label="Gemini Native"
+          />
+          <menuitem
+            value="openai-compatible"
+            data-l10n-id="pref-provider-openai-compatible"
+            label="OpenAI Compatible"
+          />
+          <menuitem
+            value="mimo-token-plan"
+            data-l10n-id="pref-provider-mimo"
+            label="MiMo Token Plan"
+          />
+          <menuitem
+            value="mimo-balance-api"
+            data-l10n-id="pref-provider-mimo-balance"
+            label="MiMo Balance API"
+          />
+        </menupopup>
+      </menulist>
     </hbox>
 
     <hbox>
@@ -111,18 +118,25 @@
       <label data-l10n-id="pref-pdf-parse-mode" style="width: 120px"
         >PDF Parse Mode:</label
       >
-      <html:select
+      <menulist
         id="zotero-prefpane-__addonRef__-geminiPdfParseMode"
         preference="extensions.zotero.__addonRef__.geminiPdfParseMode"
+        native="true"
         style="width: 180px"
       >
-        <html:option value="remote" data-l10n-id="pref-pdf-parse-mode-remote"
-          >Remote (upload PDF)</html:option
-        >
-        <html:option value="local" data-l10n-id="pref-pdf-parse-mode-local"
-          >Local (extract text)</html:option
-        >
-      </html:select>
+        <menupopup>
+          <menuitem
+            value="remote"
+            data-l10n-id="pref-pdf-parse-mode-remote"
+            label="Remote (upload PDF)"
+          />
+          <menuitem
+            value="local"
+            data-l10n-id="pref-pdf-parse-mode-local"
+            label="Local (extract text)"
+          />
+        </menupopup>
+      </menulist>
     </hbox>
 
     <hbox align="center">
@@ -339,18 +353,25 @@
       <label data-l10n-id="pref-pdf-parse-mode" style="margin-left: 20px"
         >PDF Parse Mode:</label
       >
-      <html:select
+      <menulist
         id="zotero-prefpane-__addonRef__-openaiCompatiblePdfParseMode"
         preference="extensions.zotero.__addonRef__.openaiCompatiblePdfParseMode"
+        native="true"
         style="width: 180px"
       >
-        <html:option value="remote" data-l10n-id="pref-pdf-parse-mode-remote"
-          >Remote (upload PDF)</html:option
-        >
-        <html:option value="local" data-l10n-id="pref-pdf-parse-mode-local"
-          >Local (extract text)</html:option
-        >
-      </html:select>
+        <menupopup>
+          <menuitem
+            value="remote"
+            data-l10n-id="pref-pdf-parse-mode-remote"
+            label="Remote (upload PDF)"
+          />
+          <menuitem
+            value="local"
+            data-l10n-id="pref-pdf-parse-mode-local"
+            label="Local (extract text)"
+          />
+        </menupopup>
+      </menulist>
     </hbox>
 
     <hbox align="center">
@@ -567,18 +588,25 @@
       <label data-l10n-id="pref-pdf-parse-mode" style="margin-left: 20px"
         >PDF Parse Mode:</label
       >
-      <html:select
+      <menulist
         id="zotero-prefpane-__addonRef__-mimoPdfParseMode"
         preference="extensions.zotero.__addonRef__.mimoPdfParseMode"
+        native="true"
         style="width: 180px"
       >
-        <html:option value="remote" data-l10n-id="pref-pdf-parse-mode-remote"
-          >Remote (upload PDF)</html:option
-        >
-        <html:option value="local" data-l10n-id="pref-pdf-parse-mode-local"
-          >Local (extract text)</html:option
-        >
-      </html:select>
+        <menupopup>
+          <menuitem
+            value="remote"
+            data-l10n-id="pref-pdf-parse-mode-remote"
+            label="Remote (upload PDF)"
+          />
+          <menuitem
+            value="local"
+            data-l10n-id="pref-pdf-parse-mode-local"
+            label="Local (extract text)"
+          />
+        </menupopup>
+      </menulist>
     </hbox>
 
     <hbox align="center">
@@ -795,18 +823,25 @@
       <label data-l10n-id="pref-pdf-parse-mode" style="margin-left: 20px"
         >PDF Parse Mode:</label
       >
-      <html:select
+      <menulist
         id="zotero-prefpane-__addonRef__-mimoBalancePdfParseMode"
         preference="extensions.zotero.__addonRef__.mimoBalancePdfParseMode"
+        native="true"
         style="width: 180px"
       >
-        <html:option value="remote" data-l10n-id="pref-pdf-parse-mode-remote"
-          >Remote (upload PDF)</html:option
-        >
-        <html:option value="local" data-l10n-id="pref-pdf-parse-mode-local"
-          >Local (extract text)</html:option
-        >
-      </html:select>
+        <menupopup>
+          <menuitem
+            value="remote"
+            data-l10n-id="pref-pdf-parse-mode-remote"
+            label="Remote (upload PDF)"
+          />
+          <menuitem
+            value="local"
+            data-l10n-id="pref-pdf-parse-mode-local"
+            label="Local (extract text)"
+          />
+        </menupopup>
+      </menulist>
     </hbox>
 
     <hbox align="center">
