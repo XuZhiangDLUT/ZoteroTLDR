@@ -1,11 +1,11 @@
 # Hanchen's Zotero TLDR
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7--9-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
+[![zotero target version](https://img.shields.io/badge/Zotero-7--10-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
 [简体中文](./README-zhCN.md)
 
-A Zotero 7-9 plugin that generates structured AI summaries for PDF papers. It supports four provider profiles, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, and **MiMo Balance API**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
+A Zotero 7-10 plugin that generates structured AI summaries for PDF papers. It supports four provider profiles, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, and **MiMo Balance API**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
 
 ## Features
 
@@ -34,6 +34,12 @@ https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.js
 ```
 
 After `v0.3.8` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
+
+### Zotero 10 Compatibility Updates
+
+The stable update manifest allows `0.3.8` to run on Zotero `10.0.*`. This is a compatibility-only update: the published XPI, its version, and its SHA-512 hash stay the same. [Zotero's official documentation](https://www.zotero.org/support/dev/zotero_10_for_developers#updating_plugin_compatibility) supports updating the compatibility range in the update manifest without releasing a new plugin version.
+
+If the plugin is disabled after upgrading Zotero, open **Tools > Plugins** (called **Add-ons** in older versions), click the gear, and choose **Check for Updates**. Once Zotero retrieves the updated manifest, it can restore compatibility for the installed `0.3.8`; the displayed version remains `0.3.8`. Re-enable the plugin if necessary and reopen its settings. If it still shows incompatible, verify that the update URL above is reachable and serves `strict_max_version: "10.0.*"`.
 
 ## Quick Start
 

@@ -1,11 +1,11 @@
 # Hanchen's Zotero TLDR
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7--9-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
+[![zotero target version](https://img.shields.io/badge/Zotero-7--10-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
 [English](./README.md)
 
-一个兼容 Zotero 7-9 的插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native**、**OpenAI Compatible**、**MiMo Token Plan** 和 **MiMo 余额 API** 四套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
+一个兼容 Zotero 7-10 的插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native**、**OpenAI Compatible**、**MiMo Token Plan** 和 **MiMo 余额 API** 四套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
 
 ## 功能特点
 
@@ -34,6 +34,12 @@ https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.js
 ```
 
 `v0.3.8` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
+
+### Zotero 10 兼容性更新
+
+稳定版更新清单允许 `0.3.8` 在 Zotero `10.0.*` 中运行。本次仅更新兼容范围，已发布的 XPI、版本号及 SHA-512 哈希保持不变。[Zotero 官方文档](https://www.zotero.org/support/dev/zotero_10_for_developers#updating_plugin_compatibility) 支持通过修改更新清单扩大兼容范围，无需发布新插件版本。
+
+如果升级 Zotero 后插件被禁用，请打开 **工具 > 插件**（旧版称“附加组件”），点击齿轮并选择 **检查更新**。Zotero 拉取新版清单后，即可更新已安装 `0.3.8` 的兼容信息，显示的版本号仍为 `0.3.8`。必要时重新启用插件并打开设置页。如果仍提示不兼容，请确认上述更新地址可以访问，且返回的 `strict_max_version` 已为 `10.0.*`。
 
 ## 快速开始
 
