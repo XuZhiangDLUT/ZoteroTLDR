@@ -47,7 +47,9 @@ Open **Tools > Plugins** (called **Add-ons** in older versions), click the gear,
 
 ### OpenAI
 
-Select **OpenAI** and enter your project API key. The profile uses `gpt-6-luna` at `https://api.openai.com/v1/responses`. **Reasoning Effort** defaults to `max` and also supports `none`, `low`, `medium`, `high`, and `xhigh`. The model has a 1,050,000-token context window and a 922,000-token input limit. Reasoning and visible text share the 128,000-token output budget. [GPT-6 Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna)
+Select **OpenAI (Official)** and enter your project API key. The profile uses `gpt-6-luna` at `https://api.openai.com/v1/responses`. **Reasoning Effort** defaults to `max` and also supports `none`, `low`, `medium`, `high`, and `xhigh`. The model has a 1,050,000-token context window and a 922,000-token input limit. Reasoning and visible text share the 128,000-token output budget. [GPT-6 Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna)
+
+Leave **Prompt Template** empty to use the prompt from the provider you switched from. If no source provider has been recorded, OpenAI uses the MiMo Balance API prompt.
 
 Remote PDF upload is the default. Files at or above 50 MB fall back to local text extraction. You can also select local text extraction in settings. **Test API** sends a short request with reasoning disabled to check access to the model.
 

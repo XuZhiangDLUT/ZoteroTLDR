@@ -225,6 +225,14 @@ export function normalizeProvider(value: unknown): LLMProvider {
   return DEFAULT_PROVIDER;
 }
 
+export function setActiveProvider(provider: LLMProvider): void {
+  const previous = normalizeProvider(getPref("activeProvider"));
+  if (provider === "openai-native" && previous !== "openai-native") {
+    setPref("openaiNativePromptSource", previous);
+  }
+  setPref("activeProvider", provider);
+}
+
 function normalizePdfParseMode(
   value: unknown,
   fallback: PdfParseMode,
@@ -269,6 +277,15 @@ function readString(
   legacyKey?: string,
 ): string {
   return String(readProviderPref(provider, key, legacyKey) ?? "").trim();
+}
+
+function readPrompt(provider: LLMProvider): string {
+  return String(readProviderPref(provider, "prompt", "prompt") ?? "");
+}
+
+export function getOpenAIInheritedPrompt(): string {
+  const source = normalizeProvider(getPref("openaiNativePromptSource"));
+  return readPrompt(source === "openai-native" ? DEFAULT_PROVIDER : source);
 }
 
 function readNumber(
@@ -362,7 +379,7 @@ export function getPrefs(): AddonPrefs {
       readNumber(provider, "rateLimitWindowMinutes", "rateLimitWindowMinutes"),
     ),
   );
-  const prompt = String(readProviderPref(provider, "prompt", "prompt") ?? "");
+  const prompt = readPrompt(provider);
   const pdfParseMode = normalizePdfParseMode(
     readProviderPref(provider, "pdfParseMode", "pdfParseMode"),
     PROVIDER_DEFAULTS[provider].pdfParseMode,
@@ -391,7 +408,10 @@ export function getPrefs(): AddonPrefs {
     retryOnTransientErrors,
     rateLimitCount,
     rateLimitWindowMinutes,
-    prompt,
+    prompt:
+      provider === "openai-native" && !prompt.trim()
+        ? getOpenAIInheritedPrompt()
+        : prompt,
     pdfParseMode,
   };
 }

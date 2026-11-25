@@ -8,6 +8,7 @@ pref("openaiNativeConcurrency", 1);
 pref("openaiNativeAttachmentFilter", "!* - mono.pdf, !* - dual.pdf");
 pref("openaiNativeSkipExistingSummary", true);
 pref("openaiNativePrompt", "");
+pref("openaiNativePromptSource", "");
 
 // Gemini Native 配置
 pref("geminiApiBase", "https://x666.me/v1");

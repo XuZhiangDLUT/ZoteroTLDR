@@ -15,6 +15,7 @@ declare namespace _ZoteroTypes {
       "openaiNativeAttachmentFilter": string;
       "openaiNativeSkipExistingSummary": boolean;
       "openaiNativePrompt": string;
+      "openaiNativePromptSource": string;
       "geminiApiBase": string;
       "geminiApiKey": string;
       "geminiModel": string;

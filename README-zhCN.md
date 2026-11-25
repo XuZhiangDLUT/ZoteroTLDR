@@ -47,7 +47,9 @@ https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.js
 
 ### OpenAI
 
-选择 **OpenAI** 并填写项目 API Key。此配置使用 `https://api.openai.com/v1/responses` 和 `gpt-6-luna`。**推理等级**默认 `max`，也可选 `none`、`low`、`medium`、`high` 或 `xhigh`。上下文窗口为 1,050,000 tokens，输入上限为 922,000 tokens，推理与可见正文共用 128,000 tokens 的输出预算。[GPT-6 Luna 官方文档](https://developers.openai.com/api/docs/models/gpt-6-luna)
+选择 **OpenAI（官方）** 并填写项目 API Key。此配置使用 `https://api.openai.com/v1/responses` 和 `gpt-6-luna`。**推理等级**默认 `max`，也可选 `none`、`low`、`medium`、`high` 或 `xhigh`。上下文窗口为 1,050,000 tokens，输入上限为 922,000 tokens，推理与可见正文共用 128,000 tokens 的输出预算。[GPT-6 Luna 官方文档](https://developers.openai.com/api/docs/models/gpt-6-luna)
+
+**提示词模板**留空时沿用切换前的 Provider 提示词。尚未记录来源时，默认使用 MiMo 余额 API 的提示词。
 
 默认上传 PDF。文件达到 50 MB 时会回退到本地文本提取，也可以在设置中直接选择本地模式。“测试 API”用关闭推理的短请求检查模型访问权限。
 

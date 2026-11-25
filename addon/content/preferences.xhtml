@@ -26,7 +26,7 @@
           <menuitem
             value="openai-native"
             data-l10n-id="pref-menu-provider-openai-native"
-            label="OpenAI"
+            label="OpenAI (Official)"
           />
           <menuitem
             value="openai-compatible"
@@ -56,7 +56,7 @@
     </hbox>
   </groupbox>
 
-  <groupbox id="zotero-prefpane-__addonRef__-geminiSettings">
+  <groupbox id="zotero-prefpane-__addonRef__-geminiSettings" hidden="true">
     <label
       ><html:h3 data-l10n-id="pref-provider-gemini"
         >Gemini Native</html:h3
@@ -290,12 +290,27 @@
     </vbox>
   </groupbox>
 
-  <groupbox id="zotero-prefpane-__addonRef__-openaiCompatibleSettings">
+  <groupbox
+    id="zotero-prefpane-__addonRef__-openaiCompatibleSettings"
+    hidden="true"
+  >
     <label
       ><html:h3 data-l10n-id="pref-provider-openai-compatible"
         >OpenAI Compatible</html:h3
       ></label
     >
+
+    <html:p data-l10n-id="pref-openai-compatible-hint">
+      For api.openai.com and GPT-6 Luna's reasoning setting, use OpenAI
+      (Official).
+    </html:p>
+    <hbox>
+      <button
+        id="zotero-prefpane-__addonRef__-useOpenAI"
+        data-l10n-id="pref-openai-use-official"
+        label="Switch to OpenAI (Official)"
+      />
+    </hbox>
 
     <hbox align="center">
       <label data-l10n-id="pref-api-base" style="width: 120px"
@@ -524,7 +539,7 @@
     </vbox>
   </groupbox>
 
-  <groupbox id="zotero-prefpane-__addonRef__-mimoSettings">
+  <groupbox id="zotero-prefpane-__addonRef__-mimoSettings" hidden="true">
     <label
       ><html:h3 data-l10n-id="pref-provider-mimo"
         >MiMo Token Plan</html:h3
@@ -758,7 +773,7 @@
     </vbox>
   </groupbox>
 
-  <groupbox id="zotero-prefpane-__addonRef__-mimoBalanceSettings">
+  <groupbox id="zotero-prefpane-__addonRef__-mimoBalanceSettings" hidden="true">
     <label
       ><html:h3 data-l10n-id="pref-provider-mimo-balance"
         >MiMo Balance API</html:h3
@@ -998,7 +1013,7 @@
   >
     <label
       ><html:h3 data-l10n-id="pref-provider-openai-native"
-        >OpenAI</html:h3
+        >OpenAI (Official)</html:h3
       ></label
     >
 
@@ -1129,6 +1144,9 @@
         rows="8"
         style="width: 100%"
       />
+      <html:p data-l10n-id="pref-openai-inherited-prompt">
+        Leave this field empty to use the previous provider's prompt.
+      </html:p>
     </vbox>
   </groupbox>
 

@@ -10,6 +10,7 @@ import {
   DEFAULT_PROVIDER,
   getPrefs,
   normalizeProvider,
+  setActiveProvider,
 } from "../src/utils/prefs";
 import type { AddonPrefs } from "../src/utils/prefs";
 
@@ -218,6 +219,42 @@ test("OpenAI reads saved reasoning effort and defaults older installations to ma
     assert.equal(getPrefs().openaiReasoningEffort, "xhigh");
     saved = "invalid";
     assert.equal(getPrefs().openaiReasoningEffort, "max");
+  } finally {
+    globalThis.Zotero = previous;
+  }
+});
+
+test("OpenAI inherits the previous provider's prompt until a custom prompt is set", () => {
+  const previous = globalThis.Zotero;
+  const values = new Map([
+    ["activeProvider", "openai-native"],
+    ["mimoBalancePrompt", "MiMo template"],
+    ["openaiCompatiblePrompt", "Gateway template"],
+    ["prompt", "Legacy Gemini template"],
+  ]);
+  globalThis.Zotero = {
+    Prefs: {
+      get(key: string) {
+        return values.get(key.split(".").pop()!);
+      },
+      set(key: string, value: string) {
+        values.set(key.split(".").pop()!, value);
+      },
+    },
+  } as typeof Zotero;
+  try {
+    assert.equal(getPrefs().prompt, "MiMo template");
+    setActiveProvider("openai-compatible");
+    setActiveProvider("openai-native");
+    assert.equal(getPrefs().prompt, "Gateway template");
+
+    values.set("openaiNativePrompt", "My OpenAI template");
+    setActiveProvider("gemini-native");
+    setActiveProvider("openai-native");
+    assert.equal(getPrefs().prompt, "My OpenAI template");
+    values.set("openaiNativePrompt", " ");
+    assert.equal(getPrefs().prompt, "Legacy Gemini template");
+    assert.equal(values.get("openaiCompatiblePrompt"), "Gateway template");
   } finally {
     globalThis.Zotero = previous;
   }

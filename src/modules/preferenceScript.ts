@@ -1,7 +1,14 @@
 import { config } from "../../package.json";
 import { AISummaryModule } from "./aiSummary";
 import { getString } from "../utils/locale";
-import { DEFAULT_PROVIDER, getPref, setPref } from "../utils/prefs";
+import {
+  DEFAULT_PROVIDER,
+  getOpenAIInheritedPrompt,
+  getPref,
+  normalizeProvider,
+  setActiveProvider,
+  setPref,
+} from "../utils/prefs";
 import { DEFAULT_OPENAI_REASONING_EFFORT } from "../llm/openai";
 
 interface PreferenceMenuList extends Element {
@@ -34,6 +41,9 @@ export async function registerPrefsScripts(_window: Window) {
   }
   bindPrefEvents();
   initMenuLists(_window);
+  _window.document
+    .getElementById(`${paneId}useOpenAI`)
+    ?.addEventListener("command", selectOfficialOpenAI);
   updateProviderSettingsVisibility(_window.document);
 }
 
@@ -65,19 +75,34 @@ function initMenuLists(win: Window) {
     initializedMenuLists.add(select);
 
     select.addEventListener("command", () => {
-      setPref(pref, select.value);
       if (pref === "activeProvider") {
+        setActiveProvider(normalizeProvider(select.value));
         // Let the native popup finish closing before changing the pane layout.
         win.setTimeout(() => updateProviderSettingsVisibility(doc), 0);
+      } else {
+        setPref(pref, select.value);
       }
     });
   }
+}
+
+function selectOfficialOpenAI(event: Event) {
+  const doc = (event.currentTarget as Element | null)?.ownerDocument;
+  if (!doc) return;
+  const select = doc.querySelector<PreferenceMenuList>(
+    `#${paneId}activeProvider`,
+  );
+  if (!select) return;
+  select.value = "openai-native";
+  setActiveProvider("openai-native");
+  updateProviderSettingsVisibility(doc);
 }
 
 function updateProviderSettingsVisibility(doc: Document) {
   const activeProvider = doc.querySelector<PreferenceMenuList>(
     `#${paneId}activeProvider`,
   )?.value;
+  const selected = normalizeProvider(activeProvider);
   const sections = {
     "gemini-native": "geminiSettings",
     "openai-native": "openaiNativeSettings",
@@ -87,10 +112,18 @@ function updateProviderSettingsVisibility(doc: Document) {
   };
   for (const [provider, id] of Object.entries(sections)) {
     const settings = doc.getElementById(`${paneId}${id}`);
-    settings?.toggleAttribute(
-      "hidden",
-      provider !== (activeProvider || DEFAULT_PROVIDER),
+    if (provider === selected) {
+      settings?.removeAttribute("hidden");
+    } else {
+      // XUL only hides elements when the attribute value is exactly "true".
+      settings?.setAttribute("hidden", "true");
+    }
+  }
+  if (selected === "openai-native") {
+    const prompt = doc.querySelector<HTMLTextAreaElement>(
+      `#${paneId}openaiNativePrompt`,
     );
+    if (prompt) prompt.placeholder = getOpenAIInheritedPrompt();
   }
 }
 
