@@ -1,6 +1,13 @@
 // 当前启用的 Provider
 pref("activeProvider", "mimo-balance-api");
 
+pref("openaiNativeApiKey", "");
+pref("openaiNativePdfParseMode", "remote");
+pref("openaiNativeConcurrency", 1);
+pref("openaiNativeAttachmentFilter", "!* - mono.pdf, !* - dual.pdf");
+pref("openaiNativeSkipExistingSummary", true);
+pref("openaiNativePrompt", "");
+
 // Gemini Native 配置
 pref("geminiApiBase", "https://x666.me/v1");
 pref("geminiApiKey", "");

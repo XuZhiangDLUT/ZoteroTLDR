@@ -5,12 +5,12 @@
 
 [English](./README.md)
 
-一个兼容 Zotero 7-10 的插件，用 AI 为 PDF 论文生成结构化摘要。插件支持 **Gemini Native**、**OpenAI Compatible**、**MiMo Token Plan** 和 **MiMo 余额 API** 四套 Provider 配置，每套都有独立默认参数，切换 Provider 后通常只需要填写对应 API Key。
+一个兼容 Zotero 7-10 的插件，用 AI 为 PDF 论文生成结构化摘要。支持 **OpenAI**、**Gemini Native**、**OpenAI Compatible**、**MiMo Token Plan** 和 **MiMo 余额 API**，选择 Provider 后填写对应的 API Key。
 
 ## 功能特点
 
 - **AI 摘要生成**：右键 → "ZoteroTLDR: AI 总结"，一键生成结构化摘要。
-- **四 Provider 配置**：Gemini Native、OpenAI Compatible、MiMo Token Plan 与 MiMo 余额 API 参数互不覆盖，便于快速切换。
+- **独立 Provider 配置**：切换 Provider 时保留各自的 API Key 和设置。
 - **远端 PDF 上传 / 本地文本模式**：Gemini Native 使用 Gemini `inlineData`；OpenAI Compatible 使用 chat-time `input_file` 上传，适配 ds2api/cliproxyapi 链路；MiMo 系列默认使用本地文本提取并复用 OpenAI 兼容流式 chat 通道。
 - **流式思考与输出**：Provider 支持时，思考/推理内容和最终正文会分流显示。
 - **独立处理每个 PDF**：一个条目有多个 PDF 时，每个 PDF 生成独立笔记。
@@ -33,13 +33,7 @@
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-`v0.3.8` 发布到 GitHub 且发布 workflow 自动提交 `updates/update.json` 后，Zotero 就可以通过这个链接检查并更新本地已安装插件。如果你安装的是很早以前使用旧更新清单地址的版本，请先手动安装一次新版 `.xpi`，之后就会迁移到仓库内更新清单。
-
-### Zotero 10 兼容性更新
-
-稳定版更新清单允许 `0.3.8` 在 Zotero `10.0.*` 中运行。本次仅更新兼容范围，已发布的 XPI、版本号及 SHA-512 哈希保持不变。[Zotero 官方文档](https://www.zotero.org/support/dev/zotero_10_for_developers#updating_plugin_compatibility) 支持通过修改更新清单扩大兼容范围，无需发布新插件版本。
-
-如果升级 Zotero 后插件被禁用，请打开 **工具 > 插件**（旧版称“附加组件”），点击齿轮并选择 **检查更新**。Zotero 拉取新版清单后，即可更新已安装 `0.3.8` 的兼容信息，显示的版本号仍为 `0.3.8`。必要时重新启用插件并打开设置页。如果仍提示不兼容，请确认上述更新地址可以访问，且返回的 `strict_max_version` 已为 `10.0.*`。
+打开 **工具 > 插件**（旧版称“附加组件”），点击齿轮并选择 **检查更新**。如果旧版本使用其他更新清单地址，手动安装一次最新版 `.xpi` 即可切换到此更新渠道。
 
 ## 快速开始
 
@@ -50,6 +44,12 @@ https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.js
 ## 设置
 
 **Zotero → 编辑 → 设置 → Hanchen's Zotero TLDR**
+
+### OpenAI
+
+选择 **OpenAI** 并填写项目 API Key。此配置使用 `https://api.openai.com/v1/responses` 和 `gpt-6-luna`。摘要使用 `reasoning.effort: "max"`，上下文窗口为 1,050,000 tokens，输入上限为 922,000 tokens，推理与可见正文共同占用 128,000 tokens 的输出预算。[GPT-6 Luna 官方文档](https://developers.openai.com/api/docs/models/gpt-6-luna)
+
+默认上传 PDF。文件达到 50 MB 时会回退到本地文本提取，也可以在设置中直接选择本地模式。“测试 API”用关闭推理的短请求检查模型访问权限。
 
 ### Provider 默认参数
 

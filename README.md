@@ -5,12 +5,12 @@
 
 [简体中文](./README-zhCN.md)
 
-A Zotero 7-10 plugin that generates structured AI summaries for PDF papers. It supports four provider profiles, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, and **MiMo Balance API**, each with its own defaults so you can switch providers by selecting a profile and filling in the API key.
+A Zotero 7-10 plugin that generates structured AI summaries for PDF papers. Select **OpenAI**, **Gemini Native**, **OpenAI Compatible**, **MiMo Token Plan**, or **MiMo Balance API** and enter the corresponding API key.
 
 ## Features
 
 - **AI Summarization**: Right-click → "ZoteroTLDR: AI 总结" to generate structured summaries.
-- **Four Provider Profiles**: Switch between Gemini Native, OpenAI Compatible, MiMo Token Plan, and MiMo Balance API without overwriting each profile's defaults.
+- **Independent Provider Settings**: Switch providers while keeping each profile's API key and settings.
 - **Remote PDF Upload / Local Text Mode**: Gemini Native uses Gemini `inlineData`; OpenAI Compatible uses chat-time `input_file` upload for ds2api/cliproxyapi-style gateways; MiMo providers default to local text extraction over OpenAI-compatible chat streaming.
 - **Streaming Thoughts and Output**: Streams reasoning/thinking chunks separately from final content when the provider exposes them.
 - **Per-PDF Processing**: Each PDF in an item generates its own separate note.
@@ -33,13 +33,7 @@ Stable builds embed this Zotero update URL:
 https://raw.githubusercontent.com/XuZhiangDLUT/ZoteroTLDR/main/updates/update.json
 ```
 
-After `v0.3.8` is released on GitHub and `updates/update.json` is committed by the release workflow, Zotero can check that URL and update the locally installed plugin automatically. If you installed an older build that used a legacy update manifest URL, install a newer `.xpi` once manually to migrate to the in-repo update manifest.
-
-### Zotero 10 Compatibility Updates
-
-The stable update manifest allows `0.3.8` to run on Zotero `10.0.*`. This is a compatibility-only update: the published XPI, its version, and its SHA-512 hash stay the same. [Zotero's official documentation](https://www.zotero.org/support/dev/zotero_10_for_developers#updating_plugin_compatibility) supports updating the compatibility range in the update manifest without releasing a new plugin version.
-
-If the plugin is disabled after upgrading Zotero, open **Tools > Plugins** (called **Add-ons** in older versions), click the gear, and choose **Check for Updates**. Once Zotero retrieves the updated manifest, it can restore compatibility for the installed `0.3.8`; the displayed version remains `0.3.8`. Re-enable the plugin if necessary and reopen its settings. If it still shows incompatible, verify that the update URL above is reachable and serves `strict_max_version: "10.0.*"`.
+Open **Tools > Plugins** (called **Add-ons** in older versions), click the gear, and choose **Check for Updates**. If you installed an older build that used a legacy update manifest URL, install the latest `.xpi` once to switch to this update channel.
 
 ## Quick Start
 
@@ -50,6 +44,12 @@ If the plugin is disabled after upgrading Zotero, open **Tools > Plugins** (call
 ## Settings
 
 **Zotero → Edit → Settings → Hanchen's Zotero TLDR**
+
+### OpenAI
+
+Select **OpenAI** and enter your project API key. The profile uses `gpt-6-luna` at `https://api.openai.com/v1/responses`. Summaries use `reasoning.effort: "max"` within the model's 1,050,000-token context window and 922,000-token input limit. The 128,000-token output budget is shared by reasoning and visible text. [GPT-6 Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna)
+
+Remote PDF upload is the default. Files at or above 50 MB fall back to local text extraction. You can also select local text extraction in settings. **Test API** sends a short request with reasoning disabled to check access to the model.
 
 ### Provider Defaults
 

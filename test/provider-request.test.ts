@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildOpenAICompatibleChatRequest } from "../src/llm/providers";
+import {
+  buildOpenAICompatibleChatRequest,
+  summarizeWithRemotePdf,
+  summarizeWithTextStream,
+  testAPI,
+} from "../src/llm/providers";
 import { DEFAULT_PROVIDER, normalizeProvider } from "../src/utils/prefs";
 import type { AddonPrefs } from "../src/utils/prefs";
 
@@ -104,4 +109,100 @@ test("OpenAI-compatible provider keeps bearer auth and max_tokens", () => {
   assert.deepEqual(request.body.extra_body, {
     thinking: { type: "enabled", budget_tokens: 4096 },
   });
+});
+
+test("OpenAI uploads PDF data to Responses with the Luna limits and streams text", async (t) => {
+  const encode = new TextEncoder();
+  const events =
+    'event: response.output_text.delta\r\ndata: {"type":"response.output_text.delta","delta":"摘要"}\r\n\r\n' +
+    'data: {"type":"response.completed","response":{"status":"completed"}}\n\n';
+  t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
+    assert.equal(url, "https://api.openai.com/v1/responses");
+    assert.equal(
+      new Headers(init.headers).get("Authorization"),
+      "Bearer test-key",
+    );
+    const body = JSON.parse(String(init.body));
+    assert.equal(body.model, "gpt-6-luna");
+    assert.equal(body.max_output_tokens, 128_000);
+    assert.equal(body.truncation, "disabled");
+    assert.equal(body.stream, true);
+    assert.equal(body.store, false);
+    assert.deepEqual(body.reasoning, { effort: "max" });
+    for (const legacy of ["max_tokens", "temperature", "extra_body"]) {
+      assert.equal(legacy in body, false);
+    }
+    assert.deepEqual(body.input[0].content, [
+      { type: "input_text", text: "Summarize the PDF" },
+      {
+        type: "input_file",
+        filename: "paper.pdf",
+        file_data: "data:application/pdf;base64,JVBERg==",
+      },
+    ]);
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          const bytes = encode.encode(events);
+          for (let i = 0; i < bytes.length; i += 5) {
+            controller.enqueue(bytes.subarray(i, i + 5));
+          }
+          controller.close();
+        },
+      }),
+    );
+  });
+  const chunks: string[] = [];
+  const result = await summarizeWithRemotePdf({
+    prefs: makePrefs({ provider: "openai-native" }),
+    title: "Paper",
+    prompt: "Summarize the PDF",
+    fileName: "paper.pdf",
+    pdfBase64: "JVBERg==",
+    onStreamChunk: (text) => chunks.push(text),
+  });
+  assert.equal(result.markdown, "摘要");
+  assert.deepEqual(chunks, ["摘要"]);
+});
+
+test("OpenAI rejects a partial local summary after reaching the output budget", async (t) => {
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      assert.deepEqual(body.input[0].content, [
+        { type: "input_text", text: "Full paper text" },
+      ]);
+      return new Response(
+        'data: {"type":"response.output_text.delta","delta":"Partial"}\n\n' +
+          'data: {"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"}}}\n\n',
+      );
+    },
+  );
+  await assert.rejects(
+    summarizeWithTextStream({
+      prefs: makePrefs({ provider: "openai-native" }),
+      title: "Paper",
+      content: "Full paper text",
+      prompt: "Full paper text",
+    }),
+    /max_output_tokens/,
+  );
+});
+
+test("OpenAI connection testing uses a bounded Responses request", async (t) => {
+  t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
+    assert.equal(url, "https://api.openai.com/v1/responses");
+    const body = JSON.parse(String(init.body));
+    assert.deepEqual(body.reasoning, { effort: "none" });
+    assert.equal(body.max_output_tokens, 64);
+    return Response.json({
+      status: "completed",
+      output: [
+        { type: "message", content: [{ type: "output_text", text: "pong" }] },
+      ],
+    });
+  });
+  assert.equal(await testAPI(makePrefs({ provider: "openai-native" })), "pong");
 });

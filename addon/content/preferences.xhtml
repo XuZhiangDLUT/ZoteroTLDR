@@ -14,29 +14,33 @@
       >
       <menulist
         id="zotero-prefpane-__addonRef__-activeProvider"
-        preference="extensions.zotero.__addonRef__.activeProvider"
         native="true"
         style="width: 220px"
       >
         <menupopup>
           <menuitem
             value="gemini-native"
-            data-l10n-id="pref-provider-gemini"
+            data-l10n-id="pref-menu-provider-gemini"
             label="Gemini Native"
           />
           <menuitem
+            value="openai-native"
+            data-l10n-id="pref-menu-provider-openai-native"
+            label="OpenAI"
+          />
+          <menuitem
             value="openai-compatible"
-            data-l10n-id="pref-provider-openai-compatible"
+            data-l10n-id="pref-menu-provider-openai-compatible"
             label="OpenAI Compatible"
           />
           <menuitem
             value="mimo-token-plan"
-            data-l10n-id="pref-provider-mimo"
+            data-l10n-id="pref-menu-provider-mimo"
             label="MiMo Token Plan"
           />
           <menuitem
             value="mimo-balance-api"
-            data-l10n-id="pref-provider-mimo-balance"
+            data-l10n-id="pref-menu-provider-mimo-balance"
             label="MiMo Balance API"
           />
         </menupopup>
@@ -120,19 +124,18 @@
       >
       <menulist
         id="zotero-prefpane-__addonRef__-geminiPdfParseMode"
-        preference="extensions.zotero.__addonRef__.geminiPdfParseMode"
         native="true"
         style="width: 180px"
       >
         <menupopup>
           <menuitem
             value="remote"
-            data-l10n-id="pref-pdf-parse-mode-remote"
+            data-l10n-id="pref-menu-pdf-parse-mode-remote"
             label="Remote (upload PDF)"
           />
           <menuitem
             value="local"
-            data-l10n-id="pref-pdf-parse-mode-local"
+            data-l10n-id="pref-menu-pdf-parse-mode-local"
             label="Local (extract text)"
           />
         </menupopup>
@@ -355,19 +358,18 @@
       >
       <menulist
         id="zotero-prefpane-__addonRef__-openaiCompatiblePdfParseMode"
-        preference="extensions.zotero.__addonRef__.openaiCompatiblePdfParseMode"
         native="true"
         style="width: 180px"
       >
         <menupopup>
           <menuitem
             value="remote"
-            data-l10n-id="pref-pdf-parse-mode-remote"
+            data-l10n-id="pref-menu-pdf-parse-mode-remote"
             label="Remote (upload PDF)"
           />
           <menuitem
             value="local"
-            data-l10n-id="pref-pdf-parse-mode-local"
+            data-l10n-id="pref-menu-pdf-parse-mode-local"
             label="Local (extract text)"
           />
         </menupopup>
@@ -590,19 +592,18 @@
       >
       <menulist
         id="zotero-prefpane-__addonRef__-mimoPdfParseMode"
-        preference="extensions.zotero.__addonRef__.mimoPdfParseMode"
         native="true"
         style="width: 180px"
       >
         <menupopup>
           <menuitem
             value="remote"
-            data-l10n-id="pref-pdf-parse-mode-remote"
+            data-l10n-id="pref-menu-pdf-parse-mode-remote"
             label="Remote (upload PDF)"
           />
           <menuitem
             value="local"
-            data-l10n-id="pref-pdf-parse-mode-local"
+            data-l10n-id="pref-menu-pdf-parse-mode-local"
             label="Local (extract text)"
           />
         </menupopup>
@@ -825,19 +826,18 @@
       >
       <menulist
         id="zotero-prefpane-__addonRef__-mimoBalancePdfParseMode"
-        preference="extensions.zotero.__addonRef__.mimoBalancePdfParseMode"
         native="true"
         style="width: 180px"
       >
         <menupopup>
           <menuitem
             value="remote"
-            data-l10n-id="pref-pdf-parse-mode-remote"
+            data-l10n-id="pref-menu-pdf-parse-mode-remote"
             label="Remote (upload PDF)"
           />
           <menuitem
             value="local"
-            data-l10n-id="pref-pdf-parse-mode-local"
+            data-l10n-id="pref-menu-pdf-parse-mode-local"
             label="Local (extract text)"
           />
         </menupopup>
@@ -986,6 +986,123 @@
       <html:textarea
         id="zotero-prefpane-__addonRef__-mimoBalancePrompt"
         preference="extensions.zotero.__addonRef__.mimoBalancePrompt"
+        rows="8"
+        style="width: 100%"
+      />
+    </vbox>
+  </groupbox>
+
+  <groupbox
+    id="zotero-prefpane-__addonRef__-openaiNativeSettings"
+    hidden="true"
+  >
+    <label
+      ><html:h3 data-l10n-id="pref-provider-openai-native"
+        >OpenAI</html:h3
+      ></label
+    >
+
+    <html:p data-l10n-id="pref-openai-limits">
+      GPT-6 Luna uses the Responses API with max reasoning, up to 922,000 input
+      tokens and 128,000 tokens shared by reasoning and output.
+    </html:p>
+
+    <hbox align="center">
+      <label
+        data-l10n-id="pref-api-key"
+        control="zotero-prefpane-__addonRef__-openaiNativeApiKey"
+        style="width: 120px"
+      >
+        API Key:
+      </label>
+      <html:input
+        type="password"
+        id="zotero-prefpane-__addonRef__-openaiNativeApiKey"
+        preference="extensions.zotero.__addonRef__.openaiNativeApiKey"
+        placeholder="sk-proj-..."
+        style="width: 350px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label
+        data-l10n-id="pref-pdf-parse-mode"
+        control="zotero-prefpane-__addonRef__-openaiNativePdfParseMode"
+        style="width: 120px"
+      >
+        PDF Parse Mode:
+      </label>
+      <menulist
+        id="zotero-prefpane-__addonRef__-openaiNativePdfParseMode"
+        native="true"
+        style="width: 180px"
+      >
+        <menupopup>
+          <menuitem
+            value="remote"
+            data-l10n-id="pref-menu-pdf-parse-mode-remote"
+            label="Remote (upload PDF)"
+          />
+          <menuitem
+            value="local"
+            data-l10n-id="pref-menu-pdf-parse-mode-local"
+            label="Local (extract text)"
+          />
+        </menupopup>
+      </menulist>
+    </hbox>
+
+    <hbox align="center">
+      <label
+        data-l10n-id="pref-concurrency"
+        control="zotero-prefpane-__addonRef__-openaiNativeConcurrency"
+        style="width: 120px"
+      >
+        Concurrency:
+      </label>
+      <html:input
+        type="number"
+        min="1"
+        max="10"
+        id="zotero-prefpane-__addonRef__-openaiNativeConcurrency"
+        preference="extensions.zotero.__addonRef__.openaiNativeConcurrency"
+        style="width: 65px"
+      />
+    </hbox>
+
+    <hbox align="center">
+      <label
+        data-l10n-id="pref-attachment-filter"
+        control="zotero-prefpane-__addonRef__-openaiNativeAttachmentFilter"
+        style="width: 120px"
+      >
+        PDF Filter:
+      </label>
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-openaiNativeAttachmentFilter"
+        preference="extensions.zotero.__addonRef__.openaiNativeAttachmentFilter"
+        style="width: 250px"
+      />
+    </hbox>
+
+    <checkbox
+      id="zotero-prefpane-__addonRef__-openaiNativeSkipExistingSummary"
+      preference="extensions.zotero.__addonRef__.openaiNativeSkipExistingSummary"
+      data-l10n-id="pref-openai-skip-existing"
+      label="Skip summarized PDFs"
+    />
+
+    <vbox>
+      <label
+        data-l10n-id="pref-prompt"
+        control="zotero-prefpane-__addonRef__-openaiNativePrompt"
+      >
+        Prompt Template:
+      </label>
+      <html:textarea
+        id="zotero-prefpane-__addonRef__-openaiNativePrompt"
+        preference="extensions.zotero.__addonRef__.openaiNativePrompt"
         rows="8"
         style="width: 100%"
       />

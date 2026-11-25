@@ -8,6 +8,7 @@ interface PreferenceMenuList extends Element {
 }
 
 const initializedMenuLists = new WeakSet<PreferenceMenuList>();
+const paneId = `zotero-prefpane-${config.addonRef}-`;
 
 export async function registerPrefsScripts(_window: Window) {
   try {
@@ -31,96 +32,63 @@ export async function registerPrefsScripts(_window: Window) {
     addon.data.prefs.window = _window;
   }
   bindPrefEvents();
-  initSelectElements();
-  updateProviderSettingsVisibility();
+  initMenuLists(_window);
+  updateProviderSettingsVisibility(_window.document);
 }
 
 /**
  * 初始化下拉控件的值（Zotero 7 需要手动处理）
  */
-function initSelectElements() {
-  const doc = addon.data.prefs!.window.document;
-  const selectPrefs = [
-    {
-      id: "activeProvider",
-      pref: "activeProvider",
-      fallback: DEFAULT_PROVIDER,
-    },
-    {
-      id: "geminiPdfParseMode",
-      pref: "geminiPdfParseMode",
-      fallback: "remote",
-    },
-    {
-      id: "openaiCompatiblePdfParseMode",
-      pref: "openaiCompatiblePdfParseMode",
-      fallback: "remote",
-    },
-    {
-      id: "mimoPdfParseMode",
-      pref: "mimoPdfParseMode",
-      fallback: "local",
-    },
-    {
-      id: "mimoBalancePdfParseMode",
-      pref: "mimoBalancePdfParseMode",
-      fallback: "local",
-    },
-  ];
+function initMenuLists(win: Window) {
+  const doc = win.document;
+  const menuPrefs = [
+    ["activeProvider", DEFAULT_PROVIDER],
+    ["geminiPdfParseMode", "remote"],
+    ["openaiNativePdfParseMode", "remote"],
+    ["openaiCompatiblePdfParseMode", "remote"],
+    ["mimoPdfParseMode", "local"],
+    ["mimoBalancePdfParseMode", "local"],
+  ] as const;
 
-  for (const { id, pref, fallback } of selectPrefs) {
-    const select = doc?.querySelector(
-      `#zotero-prefpane-${config.addonRef}-${id}`,
-    ) as PreferenceMenuList | null;
-
+  for (const [pref, fallback] of menuPrefs) {
+    const select = doc.querySelector<PreferenceMenuList>(`#${paneId}${pref}`);
     if (!select) continue;
-    select.value = (getPref(pref as any) as string) || fallback;
+    const value = getPref(pref);
+    const hasValue = Array.from<Element>(
+      select.querySelectorAll<Element>("menuitem"),
+    ).some((item) => item.getAttribute("value") === value);
+    select.value = hasValue ? value : fallback;
+
     if (initializedMenuLists.has(select)) continue;
     initializedMenuLists.add(select);
 
     select.addEventListener("command", () => {
-      const value = select.value;
-      // Let the native menulist close before changing preferences or layout.
-      addon.data.prefs?.window.setTimeout(() => {
-        setPref(pref as any, value);
-        if (pref === "activeProvider") {
-          updateProviderSettingsVisibility();
-        }
-      }, 0);
+      setPref(pref, select.value);
+      if (pref === "activeProvider") {
+        // Let the native popup finish closing before changing the pane layout.
+        win.setTimeout(() => updateProviderSettingsVisibility(doc), 0);
+      }
     });
   }
 }
 
-function updateProviderSettingsVisibility() {
-  const doc = addon.data.prefs!.window.document;
-  const activeProviderSelect = doc?.querySelector(
-    `#zotero-prefpane-${config.addonRef}-activeProvider`,
-  ) as PreferenceMenuList | null;
-  const geminiSettings = doc?.querySelector(
-    `#zotero-prefpane-${config.addonRef}-geminiSettings`,
-  ) as HTMLElement | null;
-  const openaiSettings = doc?.querySelector(
-    `#zotero-prefpane-${config.addonRef}-openaiCompatibleSettings`,
-  ) as HTMLElement | null;
-  const mimoSettings = doc?.querySelector(
-    `#zotero-prefpane-${config.addonRef}-mimoSettings`,
-  ) as HTMLElement | null;
-  const mimoBalanceSettings = doc?.querySelector(
-    `#zotero-prefpane-${config.addonRef}-mimoBalanceSettings`,
-  ) as HTMLElement | null;
-
-  const activeProvider = activeProviderSelect?.value || DEFAULT_PROVIDER;
-  if (geminiSettings) {
-    geminiSettings.hidden = activeProvider !== "gemini-native";
-  }
-  if (openaiSettings) {
-    openaiSettings.hidden = activeProvider !== "openai-compatible";
-  }
-  if (mimoSettings) {
-    mimoSettings.hidden = activeProvider !== "mimo-token-plan";
-  }
-  if (mimoBalanceSettings) {
-    mimoBalanceSettings.hidden = activeProvider !== "mimo-balance-api";
+function updateProviderSettingsVisibility(doc: Document) {
+  const activeProvider = doc.querySelector<PreferenceMenuList>(
+    `#${paneId}activeProvider`,
+  )?.value;
+  const sections = {
+    "gemini-native": "geminiSettings",
+    "openai-native": "openaiNativeSettings",
+    "openai-compatible": "openaiCompatibleSettings",
+    "mimo-token-plan": "mimoSettings",
+    "mimo-balance-api": "mimoBalanceSettings",
+  };
+  for (const [provider, id] of Object.entries(sections)) {
+    const settings = doc.getElementById(`${paneId}${id}`);
+    settings?.toggleAttribute(
+      "hidden",
+      provider !== (activeProvider || DEFAULT_PROVIDER),
+    );
   }
 }
 

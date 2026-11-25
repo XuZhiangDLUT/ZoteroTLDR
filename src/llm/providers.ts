@@ -1,4 +1,5 @@
 import type { AddonPrefs } from "../utils/prefs";
+import { streamOpenAIResponse, testOpenAI } from "./openai";
 
 export interface SummarizeOptions {
   title: string;
@@ -117,6 +118,9 @@ export async function summarize(
   opts: SummarizeOptions,
 ): Promise<SummarizeResult> {
   const { prefs, prompt } = opts;
+  if (prefs.provider === "openai-native") {
+    return streamOpenAIResponse({ apiKey: getApiKey(prefs), prompt });
+  }
   const request = buildOpenAICompatibleChatRequest({
     prefs,
     messages: [
@@ -152,6 +156,10 @@ export async function summarize(
  * 测试 API 连接
  */
 export async function testAPI(prefs: AddonPrefs): Promise<string> {
+  if (prefs.provider === "openai-native") {
+    return testOpenAI(getApiKey(prefs));
+  }
+
   const request = buildOpenAICompatibleChatRequest({
     prefs: {
       ...prefs,
@@ -191,6 +199,9 @@ export async function testAPI(prefs: AddonPrefs): Promise<string> {
 export async function summarizeWithRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
+  if (opts.prefs.provider === "openai-native") {
+    return streamOpenAIResponse({ ...opts, apiKey: getApiKey(opts.prefs) });
+  }
   if (isOpenAIChatProvider(opts.prefs)) {
     return summarizeWithOpenAICompatibleRemotePdf(opts);
   }
@@ -318,6 +329,9 @@ export async function summarizeWithTextStream(
     onStreamChunk?: (chunk: string, isThought: boolean) => void;
   },
 ): Promise<SummarizeResult> {
+  if (opts.prefs.provider === "openai-native") {
+    return streamOpenAIResponse({ ...opts, apiKey: getApiKey(opts.prefs) });
+  }
   if (isOpenAIChatProvider(opts.prefs)) {
     return summarizeWithOpenAICompatibleTextStream(opts);
   }

@@ -8,6 +8,12 @@ declare namespace _ZoteroTypes {
   interface Prefs {
     PluginPrefsMap: {
       "activeProvider": string;
+      "openaiNativeApiKey": string;
+      "openaiNativePdfParseMode": string;
+      "openaiNativeConcurrency": number;
+      "openaiNativeAttachmentFilter": string;
+      "openaiNativeSkipExistingSummary": boolean;
+      "openaiNativePrompt": string;
       "geminiApiBase": string;
       "geminiApiKey": string;
       "geminiModel": string;

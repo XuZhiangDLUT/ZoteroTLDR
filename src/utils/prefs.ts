@@ -1,4 +1,9 @@
 import { config } from "../../package.json";
+import {
+  OPENAI_API_BASE,
+  OPENAI_MAX_OUTPUT_TOKENS,
+  OPENAI_MODEL,
+} from "../llm/openai";
 
 type PluginPrefsMap = _ZoteroTypes.Prefs["PluginPrefsMap"];
 
@@ -23,6 +28,7 @@ export function setPref<K extends keyof PluginPrefsMap>(
 
 export type LLMProvider =
   | "gemini-native"
+  | "openai-native"
   | "openai-compatible"
   | "mimo-token-plan"
   | "mimo-balance-api";
@@ -102,6 +108,26 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, ProviderDefaults> = {
     rateLimitWindowMinutes: 5,
     prompt: "",
   },
+  "openai-native": {
+    apiBase: OPENAI_API_BASE,
+    apiKey: "",
+    model: OPENAI_MODEL,
+    temperature: 0,
+    maxOutputTokens: OPENAI_MAX_OUTPUT_TOKENS,
+    pdfParseMode: "remote",
+    enableThoughts: true,
+    thinkingBudget: -1,
+    concurrency: 1,
+    maxChars: Infinity,
+    attachmentFilter: "!* - mono.pdf, !* - dual.pdf",
+    maxFileSizeMB: 0,
+    maxPageCount: 0,
+    skipExistingSummary: true,
+    retryOnTransientErrors: 2,
+    rateLimitCount: 20,
+    rateLimitWindowMinutes: 1,
+    prompt: "",
+  },
   "openai-compatible": {
     apiBase: "https://cpa.20020519.xyz/v1",
     apiKey: "",
@@ -166,9 +192,10 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, ProviderDefaults> = {
 
 const PROVIDER_PREFIX: Record<
   LLMProvider,
-  "gemini" | "openaiCompatible" | "mimo" | "mimoBalance"
+  "gemini" | "openaiNative" | "openaiCompatible" | "mimo" | "mimoBalance"
 > = {
   "gemini-native": "gemini",
+  "openai-native": "openaiNative",
   "openai-compatible": "openaiCompatible",
   "mimo-token-plan": "mimo",
   "mimo-balance-api": "mimoBalance",
@@ -176,6 +203,7 @@ const PROVIDER_PREFIX: Record<
 
 const PROVIDER_LABEL: Record<LLMProvider, string> = {
   "gemini-native": "Gemini Native",
+  "openai-native": "OpenAI",
   "openai-compatible": "OpenAI Compatible",
   "mimo-token-plan": "MiMo Token Plan",
   "mimo-balance-api": "MiMo Balance API",
@@ -184,6 +212,7 @@ const PROVIDER_LABEL: Record<LLMProvider, string> = {
 export function normalizeProvider(value: unknown): LLMProvider {
   if (
     value === "gemini-native" ||
+    value === "openai-native" ||
     value === "openai-compatible" ||
     value === "mimo-token-plan" ||
     value === "mimo-balance-api"
@@ -193,8 +222,11 @@ export function normalizeProvider(value: unknown): LLMProvider {
   return DEFAULT_PROVIDER;
 }
 
-function normalizePdfParseMode(value: unknown): PdfParseMode {
-  return value === "local" ? "local" : "remote";
+function normalizePdfParseMode(
+  value: unknown,
+  fallback: PdfParseMode,
+): PdfParseMode {
+  return value === "local" || value === "remote" ? value : fallback;
 }
 
 function capitalizeKey(key: string): string {
@@ -330,6 +362,7 @@ export function getPrefs(): AddonPrefs {
   const prompt = String(readProviderPref(provider, "prompt", "prompt") ?? "");
   const pdfParseMode = normalizePdfParseMode(
     readProviderPref(provider, "pdfParseMode", "pdfParseMode"),
+    PROVIDER_DEFAULTS[provider].pdfParseMode,
   );
 
   return {

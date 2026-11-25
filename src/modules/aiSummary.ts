@@ -7,6 +7,7 @@ import {
   type SummarizeResult,
 } from "../llm/providers";
 import { getLocaleID } from "../utils/locale";
+import { OPENAI_PDF_SIZE_LIMIT } from "../llm/openai";
 import type { FluentMessageId } from "../../typings/i10n";
 
 /**
@@ -1012,9 +1013,6 @@ async function summarizeSinglePdf(
   let usedLocalFallback = false;
 
   if (prefs.pdfParseMode === "remote") {
-    // 远端解析模式：直接上传 PDF 文件
-    const pdfBase64 = await readFileAsBase64(attachment.filePath);
-
     // 使用远端解析专用的提示词模板（如果用户没有自定义）
     const template = prefs.prompt?.trim() || DEFAULT_REMOTE_PROMPT_TEMPLATE;
     const prompt = buildPrompt(template, {
@@ -1025,6 +1023,13 @@ async function summarizeSinglePdf(
     });
 
     try {
+      if (
+        prefs.provider === "openai-native" &&
+        attachment.fileSize >= OPENAI_PDF_SIZE_LIMIT
+      ) {
+        throw new Error("OpenAI 413: PDF must be smaller than 50 MB");
+      }
+      const pdfBase64 = await readFileAsBase64(attachment.filePath);
       result = await summarizeWithRemotePdfWithRetry({
         title,
         abstract,
