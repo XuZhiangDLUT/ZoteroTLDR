@@ -2,6 +2,7 @@
 pref("activeProvider", "mimo-balance-api");
 
 pref("openaiNativeApiKey", "");
+pref("openaiNativeReasoningEffort", "max");
 pref("openaiNativePdfParseMode", "remote");
 pref("openaiNativeConcurrency", 1);
 pref("openaiNativeAttachmentFilter", "!* - mono.pdf, !* - dual.pdf");

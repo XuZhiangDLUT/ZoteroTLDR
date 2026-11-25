@@ -1003,8 +1003,8 @@
     >
 
     <html:p data-l10n-id="pref-openai-limits">
-      GPT-6 Luna uses the Responses API with max reasoning, up to 922,000 input
-      tokens and 128,000 tokens shared by reasoning and output.
+      GPT-6 Luna supports up to 922,000 input tokens and 128,000 tokens shared
+      by reasoning and output.
     </html:p>
 
     <hbox align="center">
@@ -1048,6 +1048,29 @@
             data-l10n-id="pref-menu-pdf-parse-mode-local"
             label="Local (extract text)"
           />
+        </menupopup>
+      </menulist>
+    </hbox>
+
+    <hbox align="center">
+      <label
+        data-l10n-id="pref-openai-reasoning-effort"
+        control="zotero-prefpane-__addonRef__-openaiNativeReasoningEffort"
+        style="width: 120px"
+        >Reasoning Effort:</label
+      >
+      <menulist
+        id="zotero-prefpane-__addonRef__-openaiNativeReasoningEffort"
+        native="true"
+        style="width: 180px"
+      >
+        <menupopup>
+          <menuitem value="none" label="none" />
+          <menuitem value="low" label="low" />
+          <menuitem value="medium" label="medium" />
+          <menuitem value="high" label="high" />
+          <menuitem value="xhigh" label="xhigh" />
+          <menuitem value="max" label="max" />
         </menupopup>
       </menulist>
     </hbox>

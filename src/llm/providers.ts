@@ -27,6 +27,22 @@ export interface SummarizeResult {
   thoughtsMarkdown?: string;
 }
 
+function summarizeWithOpenAI(
+  opts: Omit<
+    Parameters<typeof streamOpenAIResponse>[0],
+    "apiKey" | "reasoningEffort"
+  > & {
+    prefs: AddonPrefs;
+  },
+): Promise<SummarizeResult> {
+  const { prefs, ...input } = opts;
+  return streamOpenAIResponse({
+    ...input,
+    apiKey: getApiKey(prefs),
+    reasoningEffort: prefs.openaiReasoningEffort,
+  });
+}
+
 function getApiKey(prefs: AddonPrefs): string {
   const key = prefs.apiKey || "";
   if (!key) {
@@ -119,7 +135,7 @@ export async function summarize(
 ): Promise<SummarizeResult> {
   const { prefs, prompt } = opts;
   if (prefs.provider === "openai-native") {
-    return streamOpenAIResponse({ apiKey: getApiKey(prefs), prompt });
+    return summarizeWithOpenAI(opts);
   }
   const request = buildOpenAICompatibleChatRequest({
     prefs,
@@ -200,7 +216,7 @@ export async function summarizeWithRemotePdf(
   opts: RemotePdfSummarizeOptions,
 ): Promise<SummarizeResult> {
   if (opts.prefs.provider === "openai-native") {
-    return streamOpenAIResponse({ ...opts, apiKey: getApiKey(opts.prefs) });
+    return summarizeWithOpenAI(opts);
   }
   if (isOpenAIChatProvider(opts.prefs)) {
     return summarizeWithOpenAICompatibleRemotePdf(opts);
@@ -330,7 +346,7 @@ export async function summarizeWithTextStream(
   },
 ): Promise<SummarizeResult> {
   if (opts.prefs.provider === "openai-native") {
-    return streamOpenAIResponse({ ...opts, apiKey: getApiKey(opts.prefs) });
+    return summarizeWithOpenAI(opts);
   }
   if (isOpenAIChatProvider(opts.prefs)) {
     return summarizeWithOpenAICompatibleTextStream(opts);

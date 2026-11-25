@@ -9,6 +9,7 @@ declare namespace _ZoteroTypes {
     PluginPrefsMap: {
       "activeProvider": string;
       "openaiNativeApiKey": string;
+      "openaiNativeReasoningEffort": string;
       "openaiNativePdfParseMode": string;
       "openaiNativeConcurrency": number;
       "openaiNativeAttachmentFilter": string;

@@ -2,6 +2,7 @@ import { config } from "../../package.json";
 import { AISummaryModule } from "./aiSummary";
 import { getString } from "../utils/locale";
 import { DEFAULT_PROVIDER, getPref, setPref } from "../utils/prefs";
+import { DEFAULT_OPENAI_REASONING_EFFORT } from "../llm/openai";
 
 interface PreferenceMenuList extends Element {
   value: string;
@@ -45,6 +46,7 @@ function initMenuLists(win: Window) {
     ["activeProvider", DEFAULT_PROVIDER],
     ["geminiPdfParseMode", "remote"],
     ["openaiNativePdfParseMode", "remote"],
+    ["openaiNativeReasoningEffort", DEFAULT_OPENAI_REASONING_EFFORT],
     ["openaiCompatiblePdfParseMode", "remote"],
     ["mimoPdfParseMode", "local"],
     ["mimoBalancePdfParseMode", "local"],

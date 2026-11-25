@@ -39,6 +39,7 @@ export type FluentMessageId =
   | 'pref-model'
   | 'pref-no-limit-help'
   | 'pref-openai-limits'
+  | 'pref-openai-reasoning-effort'
   | 'pref-openai-skip-existing'
   | 'pref-pdf-parse-mode'
   | 'pref-prompt'

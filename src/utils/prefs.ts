@@ -1,8 +1,10 @@
 import { config } from "../../package.json";
 import {
+  normalizeOpenAIReasoningEffort,
   OPENAI_API_BASE,
   OPENAI_MAX_OUTPUT_TOKENS,
   OPENAI_MODEL,
+  type OpenAIReasoningEffort,
 } from "../llm/openai";
 
 type PluginPrefsMap = _ZoteroTypes.Prefs["PluginPrefsMap"];
@@ -53,6 +55,7 @@ export interface AddonPrefs {
   maxOutputTokens: number;
   enableThoughts: boolean;
   thinkingBudget: number;
+  openaiReasoningEffort?: OpenAIReasoningEffort;
   concurrency: number;
   maxChars: number;
   attachmentFilter: string;
@@ -375,6 +378,10 @@ export function getPrefs(): AddonPrefs {
     maxOutputTokens,
     enableThoughts,
     thinkingBudget,
+    openaiReasoningEffort:
+      provider === "openai-native"
+        ? normalizeOpenAIReasoningEffort(getPref("openaiNativeReasoningEffort"))
+        : undefined,
     concurrency,
     maxChars,
     attachmentFilter,

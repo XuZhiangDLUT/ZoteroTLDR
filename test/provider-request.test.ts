@@ -6,7 +6,11 @@ import {
   summarizeWithTextStream,
   testAPI,
 } from "../src/llm/providers";
-import { DEFAULT_PROVIDER, normalizeProvider } from "../src/utils/prefs";
+import {
+  DEFAULT_PROVIDER,
+  getPrefs,
+  normalizeProvider,
+} from "../src/utils/prefs";
 import type { AddonPrefs } from "../src/utils/prefs";
 
 function makePrefs(overrides: Partial<AddonPrefs> = {}): AddonPrefs {
@@ -171,6 +175,7 @@ test("OpenAI rejects a partial local summary after reaching the output budget", 
     "fetch",
     async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
+      assert.deepEqual(body.reasoning, { effort: "low" });
       assert.deepEqual(body.input[0].content, [
         { type: "input_text", text: "Full paper text" },
       ]);
@@ -182,13 +187,40 @@ test("OpenAI rejects a partial local summary after reaching the output budget", 
   );
   await assert.rejects(
     summarizeWithTextStream({
-      prefs: makePrefs({ provider: "openai-native" }),
+      prefs: makePrefs({
+        provider: "openai-native",
+        openaiReasoningEffort: "low",
+      }),
       title: "Paper",
       content: "Full paper text",
       prompt: "Full paper text",
     }),
     /max_output_tokens/,
   );
+});
+
+test("OpenAI reads saved reasoning effort and defaults older installations to max", () => {
+  const previous = globalThis.Zotero;
+  let saved: string | undefined;
+  globalThis.Zotero = {
+    Prefs: {
+      get(key: string) {
+        if (key.endsWith(".activeProvider")) return "openai-native";
+        if (key.endsWith(".openaiNativeReasoningEffort")) return saved;
+      },
+    },
+  } as typeof Zotero;
+  try {
+    assert.equal(getPrefs().openaiReasoningEffort, "max");
+    saved = "none";
+    assert.equal(getPrefs().openaiReasoningEffort, "none");
+    saved = "xhigh";
+    assert.equal(getPrefs().openaiReasoningEffort, "xhigh");
+    saved = "invalid";
+    assert.equal(getPrefs().openaiReasoningEffort, "max");
+  } finally {
+    globalThis.Zotero = previous;
+  }
 });
 
 test("OpenAI connection testing uses a bounded Responses request", async (t) => {

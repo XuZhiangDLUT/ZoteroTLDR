@@ -5,6 +5,27 @@ export const OPENAI_MODEL = "gpt-6-luna";
 export const OPENAI_MAX_OUTPUT_TOKENS = 128_000;
 export const OPENAI_PDF_SIZE_LIMIT = 50_000_000;
 
+const OPENAI_REASONING_EFFORTS = [
+  "none",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type OpenAIReasoningEffort = (typeof OPENAI_REASONING_EFFORTS)[number];
+export const DEFAULT_OPENAI_REASONING_EFFORT: OpenAIReasoningEffort = "max";
+
+export function normalizeOpenAIReasoningEffort(
+  value: unknown,
+): OpenAIReasoningEffort {
+  return (
+    OPENAI_REASONING_EFFORTS.find((effort) => effort === value) ??
+    DEFAULT_OPENAI_REASONING_EFFORT
+  );
+}
+
 interface OpenAIResponse {
   status?: string;
   error?: { message?: string };
@@ -73,9 +94,17 @@ export async function streamOpenAIResponse(options: {
   prompt: string;
   pdfBase64?: string;
   fileName?: string;
+  reasoningEffort?: OpenAIReasoningEffort;
   onStreamChunk?: (chunk: string, isThought: boolean) => void;
 }): Promise<SummarizeResult> {
-  const { apiKey, prompt, pdfBase64, fileName, onStreamChunk } = options;
+  const {
+    apiKey,
+    prompt,
+    pdfBase64,
+    fileName,
+    reasoningEffort = DEFAULT_OPENAI_REASONING_EFFORT,
+    onStreamChunk,
+  } = options;
   if (pdfBase64) {
     const padding = pdfBase64.endsWith("==")
       ? 2
@@ -101,7 +130,7 @@ export async function streamOpenAIResponse(options: {
   const response = await postOpenAIResponse(apiKey, {
     instructions: "You are an academic assistant.",
     input: [{ role: "user", content }],
-    reasoning: { effort: "max" },
+    reasoning: { effort: reasoningEffort },
     max_output_tokens: OPENAI_MAX_OUTPUT_TOKENS,
     truncation: "disabled",
     stream: true,
